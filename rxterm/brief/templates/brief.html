@@ -1,0 +1,191 @@
+{%- set AMBER = "#ff9e1b" -%}
+{%- set INK = "#111418" -%}
+{%- set MUTED = "#6b7280" -%}
+{%- set RULE = "#e5e7eb" -%}
+{%- set UP = "#0a8f4a" -%}
+{%- set DN = "#d1242f" -%}
+{%- set MONO = "Menlo,Consolas,monospace" -%}
+{%- set SANS = "Helvetica,Arial,sans-serif" -%}
+{%- macro chg(x, digits=1) -%}
+{%- if x is none or x != x -%}<span style="color:{{ MUTED }}">—</span>
+{%- else -%}<span style="color:{{ UP if x >= 0 else DN }};font-family:{{ MONO }}">{{ "%+.*f"|format(digits, x * 100) }}%</span>{%- endif -%}
+{%- endmacro -%}
+{%- macro section(title, sub="") -%}
+<tr><td style="padding:26px 28px 8px 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td style="font:700 11px/1 {{ SANS }};letter-spacing:.14em;color:{{ INK }};text-transform:uppercase;border-bottom:2px solid {{ INK }};padding-bottom:7px">
+      <span style="color:{{ AMBER }}">■</span>&nbsp;{{ title }}{% if sub %}<span style="font-weight:400;color:{{ MUTED }};letter-spacing:.04em;text-transform:none">&nbsp;&nbsp;{{ sub }}</span>{% endif %}
+    </td></tr></table>
+</td></tr>
+{%- endmacro -%}
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light only"><title>{{ subject }}</title></head>
+<body style="margin:0;padding:0;background:#eef0f3">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">{{ preheader }}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef0f3"><tr><td align="center" style="padding:18px 8px">
+<table role="presentation" width="680" cellpadding="0" cellspacing="0" style="width:100%;max-width:680px;background:#ffffff;border:1px solid #d9dce1">
+
+<!-- Masthead -->
+<tr><td style="background:#0b0d10;padding:18px 28px 14px 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td style="font:800 22px/1 {{ MONO }};color:{{ AMBER }};letter-spacing:.06em">RXTERM<span style="color:#ffffff;font-weight:400;font-size:13px;letter-spacing:.18em">&nbsp;&nbsp;PHARMA MORNING BRIEF</span></td>
+    <td align="right" style="font:400 11px/1.4 {{ MONO }};color:#9aa3ad">{{ date_long }}<br>{{ time_str }}</td>
+  </tr></table>
+</td></tr>
+<tr><td style="background:#15191e;padding:0 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+  {%- for b in benchmarks %}
+    <td style="padding:10px 0;font:400 11px/1.35 {{ MONO }};color:#c9d1d9">
+      <span style="color:{{ AMBER }};font-weight:700">{{ b.ticker }}</span> {{ "%.2f"|format(b.last) }}<br>
+      <span style="color:{{ '#3fd47e' if b.chg1d >= 0 else '#ff5a5f' }}">{{ "%+.2f"|format(b.chg1d * 100) }}%</span>
+      <span style="color:#7d8590">5D {{ "%+.1f"|format(b.chg5d * 100) }}%</span>
+    </td>
+  {%- endfor %}
+  </tr></table>
+</td></tr>
+
+<!-- The Take -->
+{{ section("The Take") }}
+<tr><td style="padding:4px 28px 0 28px;font:400 15px/1.6 Georgia,'Times New Roman',serif;color:{{ INK }}">{{ market_take }}</td></tr>
+<tr><td style="padding:10px 28px 0 28px">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="font:400 11px/1.4 {{ MONO }};color:{{ MUTED }}"><tr>
+    <td style="padding-right:18px">BREADTH <b style="color:{{ INK }}">{{ breadth.advancers }}↑ / {{ breadth.decliners }}↓</b></td>
+    <td style="padding-right:18px">&gt;50DMA <b style="color:{{ INK }}">{{ "%.0f"|format(breadth.above50 * 100) }}%</b></td>
+    <td style="padding-right:18px">&gt;200DMA <b style="color:{{ INK }}">{{ "%.0f"|format(breadth.above200 * 100) }}%</b></td>
+    <td>NEAR 52W HI <b style="color:{{ INK }}">{{ breadth.new_highs }}</b></td>
+  </tr></table>
+</td></tr>
+
+<!-- Trades -->
+{% for tier, label, color, blurb in tiers %}
+{{ section(label ~ " Trades", blurb) }}
+{% for i in ideas if i.tier == tier %}
+<tr><td style="padding:10px 28px 4px 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid {{ RULE }};border-left:4px solid {{ color }}">
+    <tr><td style="padding:14px 16px 6px 16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="font:800 20px/1 {{ MONO }};color:{{ INK }}">{{ i.ticker }}
+          <span style="font:400 12px/1 {{ SANS }};color:{{ MUTED }}">&nbsp;{{ i.name }} · {{ i.segment }}</span></td>
+        <td align="right" style="white-space:nowrap">
+          {%- set dcol = UP if i.direction == "LONG" else (DN if i.direction == "SHORT" else "#7c3aed") -%}
+          <span style="display:inline-block;background:{{ dcol }};color:#fff;font:700 11px/1 {{ MONO }};padding:5px 8px;letter-spacing:.08em">{{ i.direction }}</span>
+          <span style="display:inline-block;border:1px solid {{ INK }};color:{{ INK }};font:700 11px/1 {{ MONO }};padding:4px 7px;letter-spacing:.04em">{{ i.structure | upper }}</span>
+        </td></tr></table>
+      <div style="font:700 15px/1.35 {{ SANS }};color:{{ INK }};padding-top:10px">{{ i.headline }}</div>
+    </td></tr>
+    <tr><td style="padding:6px 16px 4px 16px">
+      <div style="background:#0b0d10;color:{{ AMBER }};font:600 12px/1.5 {{ MONO }};padding:8px 10px">{{ i.trade_line }}</div>
+    </td></tr>
+    <tr><td style="padding:6px 16px 4px 16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font:400 11px/1.3 {{ MONO }};color:{{ MUTED }};text-align:left">
+        <tr>
+          <td>{{ "ENTRY PREM" if i.basis == "premium" else "REF PX" }}<br><b style="color:{{ INK }};font-size:13px">{{ "%.2f"|format(i.entry) }}</b></td>
+          <td>TARGET<br><b style="color:{{ UP }};font-size:13px">{{ "%.2f"|format(i.target) }}</b></td>
+          <td>STOP<br><b style="color:{{ DN }};font-size:13px">{{ "%.2f"|format(i.stop) }}</b></td>
+          <td>R:R<br><b style="color:{{ INK }};font-size:13px">{{ "%.1f"|format(i.rr) if i.rr == i.rr else "—" }}</b></td>
+          {% if i.net_premium %}<td>{{ "DEBIT" }}<br><b style="color:{{ INK }};font-size:13px">{{ "%.2f"|format(i.net_premium) }}</b></td>{% endif %}
+          {% if i.breakeven %}<td>B/E<br><b style="color:{{ INK }};font-size:13px">{% if i.breakeven_low %}{{ "%.2f"|format(i.breakeven_low) }}/{% endif %}{{ "%.2f"|format(i.breakeven) }}</b></td>{% endif %}
+          <td>CONVICTION<br><b style="color:{{ AMBER }};font-size:13px;letter-spacing:1px">{{ "●" * i.conviction }}<span style="color:#d0d4da">{{ "●" * (5 - i.conviction) }}</span></b></td>
+        </tr>
+      </table>
+      <div style="font:400 11px/1.4 {{ MONO }};color:{{ MUTED }};padding-top:6px">HORIZON {{ i.horizon }}{% if i.iv %} · ATM IV {{ "%.0f"|format(i.iv * 100) }}%{% endif %}{% if i.rv %} · RV20 {{ "%.0f"|format(i.rv * 100) }}%{% endif %}{% if i.catalyst %} · {{ i.catalyst[:90] }}{% endif %}</div>
+    </td></tr>
+    <tr><td style="padding:8px 16px 4px 16px;font:400 14px/1.6 Georgia,'Times New Roman',serif;color:{{ INK }}">{{ i.thesis }}</td></tr>
+    <tr><td style="padding:4px 16px 14px 16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr valign="top">
+        <td width="58%" style="font:400 12px/1.5 {{ SANS }};color:#374151;padding-right:12px">
+          <div style="font:700 10px/1 {{ SANS }};letter-spacing:.12em;color:{{ MUTED }};padding:4px 0 6px">SIGNALS</div>
+          {% for d in i.drivers[:5] %}<div>▸ {{ d }}</div>{% endfor %}
+        </td>
+        <td width="42%" style="font:400 12px/1.5 {{ SANS }};color:#374151">
+          <div style="font:700 10px/1 {{ SANS }};letter-spacing:.12em;color:{{ DN }};padding:4px 0 6px">RISKS</div>
+          {% for r in i.risks[:3] %}<div>▸ {{ r }}</div>{% endfor %}
+        </td>
+      </tr></table>
+    </td></tr>
+  </table>
+</td></tr>
+{% else %}
+<tr><td style="padding:8px 28px;font:400 13px/1.5 {{ SANS }};color:{{ MUTED }}">No setup cleared the risk filters today. Standing aside is a position.</td></tr>
+{% endfor %}
+{% endfor %}
+
+<!-- Top stories -->
+{{ section("Top Stories", "last 48h · ranked by impact") }}
+{% for s in stories %}
+<tr><td style="padding:8px 28px 6px 28px;border-bottom:1px solid #f1f2f4">
+  <div style="font:400 10px/1.4 {{ MONO }};color:{{ MUTED }};letter-spacing:.04em">
+    {%- if s.tickers %}<b style="color:{{ AMBER }}">{{ s.tickers|join(" ") }}</b> · {% endif -%}
+    {{ s.source }} · {{ s.age }}
+    {%- for t in s.tags[:2] %} · <span style="color:{{ INK }}">{{ t }}</span>{% endfor -%}
+    {%- if s.tone == "POS" %} · <b style="color:{{ UP }}">▲ POS</b>{% elif s.tone == "NEG" %} · <b style="color:{{ DN }}">▼ NEG</b>{% endif %}
+  </div>
+  <a href="{{ s.link }}" style="font:600 14px/1.4 {{ SANS }};color:{{ INK }};text-decoration:none">{{ s.title }}</a>
+  {% if s.take %}<div style="font:italic 400 13px/1.5 Georgia,serif;color:#374151;padding-top:3px">{{ s.take }}</div>{% endif %}
+</td></tr>
+{% endfor %}
+
+<!-- Catalysts -->
+{{ section("Catalyst Calendar", "next 30 days") }}
+<tr><td style="padding:4px 28px 0 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font:400 12px/1.45 {{ SANS }};color:{{ INK }}">
+    <tr style="font:700 10px/1 {{ SANS }};letter-spacing:.1em;color:{{ MUTED }}">
+      <td style="padding:6px 8px 6px 0">DATE</td><td style="padding-right:8px">TICKER</td><td style="padding-right:8px">TYPE</td><td>EVENT</td></tr>
+    {% for c in catalysts %}
+    <tr style="border-top:1px solid #f1f2f4">
+      <td style="padding:5px 8px 5px 0;font-family:{{ MONO }};white-space:nowrap">{{ c.when.strftime("%a %d %b") }}</td>
+      <td style="font-family:{{ MONO }};font-weight:700;color:{{ AMBER }};padding-right:8px">{{ c.ticker }}</td>
+      <td style="font-family:{{ MONO }};font-size:10px;padding-right:8px;white-space:nowrap">
+        <span style="background:{{ '#fde8e8' if c.type in ('PDUFA','ADCOM') else ('#eef2ff' if c.type in ('READOUT','TRIAL') else '#f3f4f6') }};padding:2px 5px">{{ c.type }}</span></td>
+      <td style="color:#374151">{{ c.event[:95] }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" style="padding:6px 0;color:{{ MUTED }}">No scheduled binary events in the window.</td></tr>
+    {% endfor %}
+  </table>
+</td></tr>
+
+<!-- Movers & screens -->
+{{ section("Tape", "movers · screens · sector") }}
+<tr><td style="padding:4px 28px 0 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr valign="top">
+    {% for title, rows in movers %}
+    <td width="33%" style="padding-right:10px">
+      <div style="font:700 10px/1 {{ SANS }};letter-spacing:.1em;color:{{ MUTED }};padding:6px 0">{{ title }}</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font:400 12px/1.6 {{ MONO }}">
+        {% for r in rows %}<tr><td style="font-weight:700;color:{{ INK }}">{{ r.ticker }}</td><td align="right">{{ r.value | safe }}</td></tr>{% endfor %}
+      </table>
+    </td>
+    {% endfor %}
+  </tr></table>
+</td></tr>
+<tr><td style="padding:12px 28px 0 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font:400 12px/1.6 {{ SANS }};color:{{ INK }}">
+    {% for code, title, hits in screens %}
+    <tr style="border-top:1px solid #f1f2f4"><td style="padding:4px 10px 4px 0;font:700 10px/1.4 {{ SANS }};letter-spacing:.08em;color:{{ MUTED }};white-space:nowrap;vertical-align:top">{{ title | upper }}</td>
+      <td style="font-family:{{ MONO }};padding:4px 0">{{ hits if hits else "—" }}</td></tr>
+    {% endfor %}
+  </table>
+</td></tr>
+<tr><td style="padding:12px 28px 0 28px">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font:400 12px/1.6 {{ MONO }};color:{{ INK }}">
+    <tr style="font:700 10px/1 {{ SANS }};letter-spacing:.1em;color:{{ MUTED }}"><td style="padding:6px 0">SEGMENT (MEDIAN)</td><td align="right">1D</td><td align="right">5D</td><td align="right">1M</td><td align="right">3M</td><td align="right">YTD</td></tr>
+    {% for seg, r in segments %}
+    <tr style="border-top:1px solid #f1f2f4"><td style="font-family:{{ SANS }};padding:4px 0">{{ seg }}</td>
+      <td align="right">{{ chg(r.chg1d) }}</td><td align="right">{{ chg(r.chg5d) }}</td><td align="right">{{ chg(r.chg1m) }}</td>
+      <td align="right">{{ chg(r.chg3m) }}</td><td align="right">{{ chg(r.ytd) }}</td></tr>
+    {% endfor %}
+  </table>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="padding:28px 28px 22px 28px">
+  <div style="border-top:1px solid {{ RULE }};padding-top:12px;font:400 10px/1.55 {{ SANS }};color:#9ca3af">
+    Price data as of {{ as_of }} · {{ provider }} · theses by {{ writer }} · {{ n_cov }} names covered.<br>
+    {{ disclaimer }}
+  </div>
+</td></tr>
+</table>
+</td></tr></table>
+</body></html>

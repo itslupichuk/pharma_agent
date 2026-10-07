@@ -1,0 +1,95 @@
+# RXTERM morning brief — e-mails the pharma brief at 8:15 America/New_York on weekdays.
+#
+# Setup (one time): Settings → Secrets and variables → Actions → New repository secret
+#   RXTERM_SMTP_USER       your Gmail address
+#   RXTERM_SMTP_PASSWORD   a Gmail App Password (https://myaccount.google.com/apppasswords)
+#   RXTERM_EMAIL_TO        where to send it (optional, defaults to RXTERM_SMTP_USER)
+#   ANTHROPIC_API_KEY      optional — Claude writes the theses; otherwise the built-in writer does
+#
+# GitHub cron is UTC and has no DST, so two schedules run and the job keeps only the
+# one that falls before 8:15 New York time, then sleeps until exactly 8:15.
+# Note: scheduled workflows only run from the repository's default branch.
+name: morning-brief
+
+on:
+  schedule:
+    - cron: "45 11 * * 1-5"   # 07:45 EDT (summer)
+    - cron: "45 12 * * 1-5"   # 07:45 EST (winter)
+  workflow_dispatch:
+    inputs:
+      send_now:
+        description: "Send immediately (skip the 8:15 wait)"
+        type: boolean
+        default: true
+
+concurrency:
+  group: morning-brief
+  cancel-in-progress: false
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RXTERM_SMTP_USER: ${{ secrets.RXTERM_SMTP_USER }}
+      RXTERM_SMTP_PASSWORD: ${{ secrets.RXTERM_SMTP_PASSWORD }}
+      RXTERM_EMAIL_TO: ${{ secrets.RXTERM_EMAIL_TO || secrets.RXTERM_SMTP_USER }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      RXTERM_TZ: America/New_York
+    steps:
+      - name: Check configuration and schedule window
+        id: gate
+        run: |
+          if [ -z "$RXTERM_SMTP_PASSWORD" ]; then
+            echo "RXTERM_SMTP_PASSWORD secret not set — skipping."; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "wait=${{ inputs.send_now && 'false' || 'true' }}" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Two UTC crons cover EDT and EST; keep only the one that matches today's offset.
+          if [ "$(TZ=America/New_York date +%Z)" = "EDT" ]; then expected="45 11 * * 1-5"; else expected="45 12 * * 1-5"; fi
+          if [ "${{ github.event.schedule }}" != "$expected" ]; then
+            echo "Not today's schedule ($expected) — skipping."; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          now_min=$(( 10#$(TZ=America/New_York date +%H) * 60 + 10#$(TZ=America/New_York date +%M) ))
+          if [ "$now_min" -ge $((9 * 60 + 30)) ]; then
+            echo "Runner started after the open — skipping stale brief."; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "run=true" >> "$GITHUB_OUTPUT"; echo "wait=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        if: steps.gate.outputs.run == 'true'
+        run: pip install -e .
+
+      - name: Build brief
+        if: steps.gate.outputs.run == 'true'
+        run: rxterm brief --out out
+
+      - name: Wait until 08:15 New York
+        if: steps.gate.outputs.run == 'true' && steps.gate.outputs.wait == 'true'
+        run: |
+          target=$(TZ=America/New_York date -d "today 08:15" +%s); now=$(date +%s)
+          if [ "$target" -gt "$now" ]; then echo "sleeping $((target - now))s"; sleep $((target - now)); fi
+
+      - name: Send
+        if: steps.gate.outputs.run == 'true'
+        run: rxterm brief --out out --reuse --send
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          name: brief-${{ github.run_id }}
+          path: |
+            out/brief.html
+            out/brief.txt
+            out/brief.json
+          retention-days: 30

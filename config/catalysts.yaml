@@ -1,0 +1,24 @@
+# RXTERM curated catalyst calendar.
+#
+# Free data feeds don't publish FDA action dates reliably, so binary events live here.
+# The morning-brief routine checks and extends this list; you can also add your own in
+# ~/.rxterm/catalysts.yaml (same format, merged at load time).
+#
+# type: PDUFA | ADCOM | READOUT | EARNINGS | CONFERENCE | OTHER
+# Seeded 2026-10-07 from public PDUFA trackers (assyro.com, biopharmawatch.com) and
+# company releases. Verify against the company's own release before trading.
+
+- {ticker: MRK,  date: 2026-10-10, type: PDUFA, event: "Ifinatamab deruxtecan (w/ Daiichi Sankyo) — ES-SCLC"}
+- {ticker: VTRS, date: 2026-10-17, type: PDUFA, event: "Phentolamine ophthalmic 0.75% (w/ Opus Genetics) — presbyopia"}
+- {ticker: GSK,  date: 2026-10-26, type: PDUFA, event: "Bepirovirsen — chronic hepatitis B"}
+- {ticker: CYTK, date: 2026-11-14, type: PDUFA, event: "Aficamten (Myqorzo) — obstructive HCM label decision"}
+- {ticker: SMMT, date: 2026-11-14, type: PDUFA, event: "Ivonescimab + chemotherapy — EGFRm NSCLC"}
+- {ticker: SNY,  date: 2026-11-25, type: PDUFA, event: "Venglustat — type 3 Gaucher disease"}
+- {ticker: BBIO, date: 2026-11-27, type: PDUFA, event: "BBP-418 — limb-girdle muscular dystrophy 2I/R9"}
+- {ticker: VRTX, date: 2026-11-30, type: PDUFA, event: "Povetacicept — IgA nephropathy (accelerated approval)"}
+- {ticker: EXEL, date: 2026-12-03, type: PDUFA, event: "Zanzalintinib + atezolizumab — metastatic colorectal cancer"}
+- {ticker: ANAB, date: 2026-12-12, type: PDUFA, event: "Imsidolimab (Vanda licence) — generalized pustular psoriasis"}
+- {ticker: CORT, date: 2026-12-17, type: PDUFA, event: "Relacorilant — platinum-resistant ovarian cancer"}
+- {ticker: MLYS, date: 2026-12-22, type: PDUFA, event: "Lorundrostat — uncontrolled / resistant hypertension"}
+- {ticker: GILD, date: 2026-12-23, type: PDUFA, event: "Anitocabtagene autoleucel (anito-cel) — R/R multiple myeloma"}
+- {ticker: PRAX, date: 2026-12-27, type: PDUFA, event: "Relutrigine — developmental & epileptic encephalopathies"}

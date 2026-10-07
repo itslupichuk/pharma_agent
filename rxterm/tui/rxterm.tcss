@@ -1,0 +1,152 @@
+/* RXTERM — amber-on-black terminal theme */
+
+Screen {
+    background: #000000;
+    color: #e6edf3;
+    layout: vertical;
+}
+
+#topbar {
+    height: 3;
+    background: #0b0d10;
+    border-bottom: solid #ff9e1b;
+}
+#logo {
+    width: 10;
+    content-align: center middle;
+    padding: 1 1 0 2;
+    text-style: bold;
+}
+#cmd {
+    width: 1fr;
+    background: #000000;
+    color: #ff9e1b;
+    border: none;
+    padding: 0 1;
+    margin: 1 1 0 0;
+    height: 1;
+}
+#cmd:focus {
+    background: #14100a;
+}
+#cmd > .input--placeholder {
+    color: #6b5a3a;
+}
+#clock {
+    width: 44;
+    padding: 1 2 0 0;
+    content-align: right middle;
+}
+
+#tape {
+    height: 1;
+    background: #0b0d10;
+}
+#fkeys {
+    height: 1;
+    background: #000000;
+    padding: 0 1;
+}
+#status {
+    height: 1;
+    background: #0b0d10;
+}
+
+#main {
+    height: 1fr;
+}
+
+/* panels */
+.panel, DataTable, OptionList, VerticalScroll {
+    border: round #3a3f47;
+    border-title-color: #000000;
+    border-title-background: #ff9e1b;
+    border-title-style: bold;
+    background: #000000;
+}
+.panel {
+    padding: 0 1;
+}
+
+DataTable {
+    scrollbar-size: 1 1;
+}
+DataTable > .datatable--header {
+    background: #15191e;
+    color: #ff9e1b;
+    text-style: bold;
+}
+DataTable > .datatable--cursor {
+    background: #2a2111;
+}
+DataTable > .datatable--even-row {
+    background: #07090c;
+}
+DataTable > .datatable--odd-row {
+    background: #000000;
+}
+DataTable:focus {
+    border: round #ff9e1b;
+}
+
+OptionList {
+    background: #000000;
+    color: #e6edf3;
+}
+OptionList > .option-list--option-highlighted {
+    background: #ff9e1b;
+    color: #000000;
+    text-style: bold;
+}
+OptionList:focus {
+    border: round #ff9e1b;
+}
+
+/* MON */
+#mon-left { width: 3fr; }
+#mon-right { width: 2fr; }
+#mon-table { height: 1fr; }
+#mon-bench { height: 8; }
+#mon-sector { height: 8; }
+#mon-news { height: 1fr; }
+#mon-ideas { height: 9; }
+
+/* NEWS */
+#news-table { height: 1fr; }
+#news-preview { height: 9; }
+
+/* SCRN */
+#scrn-list { width: 38; }
+#scrn-right { width: 1fr; }
+#scrn-title { height: 4; }
+#scrn-table { height: 1fr; }
+
+/* IDEAS */
+#ideas-take { height: auto; max-height: 9; }
+#ideas-cols { height: 1fr; }
+#ideas-cons-wrap, #ideas-aggr-wrap { width: 1fr; }
+
+/* CAL */
+#cal-title { height: 3; }
+#cal-table { height: 1fr; }
+
+/* DES */
+#des-head { height: 3; }
+#des-body { height: 3fr; }
+#des-chart-wrap { width: 2fr; border: round #3a3f47; border-title-color: #000; border-title-background: #ff9e1b; }
+#des-stats { width: 44; }
+#des-bottom { height: 2fr; }
+#des-news { width: 3fr; height: 100%; }
+#des-about { width: 2fr; height: 100%; }
+
+/* OMON */
+#omon-exp { width: 22; }
+#omon-right { width: 1fr; }
+#omon-head { height: 3; }
+#omon-table { height: 1fr; }
+
+/* W */
+#w-title { height: 3; }
+#w-table { height: 1fr; }
+
+#HELP { padding: 1 2; }
