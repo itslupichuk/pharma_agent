@@ -45,18 +45,28 @@ def _diagnose(user: str, password: str, host: str) -> list[str]:
     return notes
 
 
+def _login(s: smtplib.SMTP, user: str, password: str) -> None:
+    # Gmail drops the connection on a bad AUTH PLAIN but answers AUTH LOGIN with a real
+    # 535 reason, so prefer LOGIN when offered.
+    if "LOGIN" in s.esmtp_features.get("auth", "").upper().split():
+        s.user, s.password = user, password
+        s.auth("LOGIN", s.auth_login, initial_response_ok=False)
+    else:
+        s.login(user, password)
+
+
 def _send(host: str, port: int, user: str, password: str, msg: EmailMessage) -> None:
     ctx = ssl.create_default_context()
     if port == 465:
         with smtplib.SMTP_SSL(host, port, context=ctx, timeout=30) as s:
-            s.login(user, password)
+            _login(s, user, password)
             s.send_message(msg)
     else:
         with smtplib.SMTP(host, port, timeout=30) as s:
             s.ehlo()
             s.starttls(context=ctx)
             s.ehlo()
-            s.login(user, password)
+            _login(s, user, password)
             s.send_message(msg)
 
 
@@ -85,6 +95,10 @@ def send_email(cfg: Settings, subject: str, html: str, text: str, to: str | None
         except smtplib.SMTPAuthenticationError as exc:
             detail = exc.smtp_error.decode(errors="replace") if isinstance(exc.smtp_error, bytes) else str(exc.smtp_error)
             errors.append(f"port {port}: login rejected ({exc.smtp_code}) {detail.strip()}")
+            if "gmail" in cfg.smtp_host:
+                errors.append("Gmail says the address/App Password pair is wrong. Make sure the App Password was created "
+                              f"while signed in as {user} (check the avatar on myaccount.google.com/apppasswords), "
+                              "then copy-paste it into the RXTERM_SMTP_PASSWORD secret.")
             break  # wrong credentials won't work on another port either
         except (smtplib.SMTPException, OSError) as exc:
             errors.append(f"port {port}: {type(exc).__name__}: {exc}")
