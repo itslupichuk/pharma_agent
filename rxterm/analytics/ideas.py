@@ -179,7 +179,9 @@ def structure_trade(md: MarketData, row: pd.Series, direction: str, tier: str, b
                    implied_move=debit / spot if spot else None)
         return out
 
-    if tier == CONSERVATIVE:
+    rv = float(row["rv20"]) if row["rv20"] == row["rv20"] else None
+    rich = bool(iv and rv and iv / rv > 1.6)   # premium expensive vs realized: finance it with a short leg
+    if tier == CONSERVATIVE or rich:
         if direction == "LONG":
             lo = _nearest(chain.calls, spot)
             if not _usable(lo, spot, spot, 0.06):
@@ -287,6 +289,8 @@ def risks_for(row: pd.Series, direction: str, tier: str, structure: str) -> list
         r.append("Drug-pricing policy (MFN / IRA negotiation / tariffs) headline risk")
     if direction == "LONG" and row["segment"] == universe.MID_BIO:
         r.append("Dilution risk — SMID biotechs frequently raise equity into strength")
+    if tier == AGGRESSIVE and "Spread" in structure:
+        r.append("Implied vol is rich vs realized, so the trade is a spread; upside is capped at the short strike")
     if "Long" in structure and tier == AGGRESSIVE:
         r.append("Long premium decays daily; IV crush after the catalyst")
     if row["rv20"] == row["rv20"] and row["rv20"] > 0.6:

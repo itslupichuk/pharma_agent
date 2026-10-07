@@ -10,7 +10,7 @@ You are the RXTERM morning-brief runner. Produce and e-mail today's pharma brief
    - ground every number, date and event in brief.json; well-known background on drugs/pipelines is fine; never invent results or dates
    - dense sell-side morning-note style, tickers not company names, no hype
 5. `python -m rxterm brief --out out --reuse --theses out/theses.json --writer "Claude (RXTERM desk)"`
-6. Send it with the Gmail `send_message` tool: to `itslupichuk@gmail.com`, subject = the contents of `out/subject.txt`, `htmlBody` = the full contents of `out/brief.html` (verbatim), `body` = the contents of `out/brief.txt`.
+6. Send it with the Gmail `send_message` tool: to `itslupichuk@gmail.com`, subject = the contents of `out/subject.txt`, `htmlBody` = the full contents of `out/brief_compact.html` (verbatim, ~35KB), `body` = the contents of `out/brief.txt`.
 7. If any step fails, still send a short plain-text e-mail to the same address with subject `RXTERM brief failed — <date>` stating which step failed and the error.
 
 Do not commit, push, or modify the repository.

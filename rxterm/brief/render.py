@@ -115,6 +115,25 @@ def render_html(snap: Snapshot) -> str:
     return re.sub(r"\n\s*", "\n", html)
 
 
+def compact_html(html: str) -> str:
+    """Hoist repeated inline styles into a <style> block of short classes.
+
+    Gmail, Apple Mail and Outlook.com honour class selectors in <head><style>. The result is
+    roughly half the size, which matters when the brief is passed through a mail API verbatim.
+    """
+    styles: dict[str, str] = {}
+
+    def repl(m: re.Match) -> str:
+        css = m.group(1)
+        if css not in styles:
+            styles[css] = f"s{len(styles):x}"
+        return f'class="{styles[css]}"'
+
+    body = re.sub(r'style="([^"]*)"', repl, html)
+    sheet = "".join(f".{c}{{{css}}}" for css, c in styles.items())
+    return body.replace("</head>", f"<style>{sheet}</style></head>", 1)
+
+
 def render_text(snap: Snapshot) -> str:
     ctx = context(snap)
     L: list[str] = []
@@ -182,7 +201,10 @@ def write_outputs(snap: Snapshot, out_dir: Path) -> dict[str, Path]:
         "json": out_dir / "brief.json",
         "subject": out_dir / "subject.txt",
     }
-    paths["html"].write_text(render_html(snap))
+    html = render_html(snap)
+    paths["html"].write_text(html)
+    paths["compact"] = out_dir / "brief_compact.html"
+    paths["compact"].write_text(compact_html(html))
     paths["text"].write_text(render_text(snap))
     paths["json"].write_text(json.dumps(export_json(snap), indent=2, default=str))
     paths["subject"].write_text(subject_for(snap))

@@ -38,8 +38,7 @@
   {%- for b in benchmarks %}
     <td style="padding:10px 0;font:400 11px/1.35 {{ MONO }};color:#c9d1d9">
       <span style="color:{{ AMBER }};font-weight:700">{{ b.ticker }}</span> {{ "%.2f"|format(b.last) }}<br>
-      <span style="color:{{ '#3fd47e' if b.chg1d >= 0 else '#ff5a5f' }}">{{ "%+.2f"|format(b.chg1d * 100) }}%</span>
-      <span style="color:#7d8590">5D {{ "%+.1f"|format(b.chg5d * 100) }}%</span>
+      <span style="color:{{ '#3fd47e' if b.chg1d >= 0 else '#ff5a5f' }}">{{ "%+.2f"|format(b.chg1d * 100) }}%</span>&nbsp;<span style="color:#7d8590">5D {{ "%+.1f"|format(b.chg5d * 100) }}%</span>
     </td>
   {%- endfor %}
   </tr></table>
