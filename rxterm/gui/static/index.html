@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RXTERM</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="top">
+  <div id="logo" title="Home" data-go="#/monitor"><span>RX</span>TERM</div>
+  <div id="searchbox">
+    <input id="search" type="text" placeholder="Search a stock — ticker or company name" autocomplete="off" spellcheck="false">
+    <div id="suggest" class="hidden"></div>
+  </div>
+  <button class="nav-btn" id="back-btn" title="Back">◀</button>
+  <nav id="nav">
+    <a data-route="monitor" href="#/monitor">Monitor</a>
+    <a data-route="trades" href="#/trades">Trade Ideas</a>
+    <a data-route="screener" href="#/screener">Screener</a>
+    <a data-route="calendar" href="#/calendar">Calendar</a>
+    <a data-route="news" href="#/news">News</a>
+    <a data-route="options" href="#/options">Options</a>
+    <a data-route="compare" href="#/compare">Compare</a>
+    <a data-route="watchlist" href="#/watchlist">Watchlist</a>
+    <a data-route="help" href="#/help">Help</a>
+  </nav>
+  <div id="clockbox"><span id="mkt" class="badge">—</span><span id="clock">—</span></div>
+</header>
+<div id="tape"><div id="tape-inner"></div></div>
+<main id="page"></main>
+<footer id="status">
+  <span id="st-msg">Starting…</span>
+  <span class="grow"></span>
+  <span id="st-alerts"></span>
+  <span id="st-src"></span>
+  <span id="st-upd"></span>
+  <button id="refresh-btn" class="btn small" title="Reload all data now">⟳ Refresh</button>
+</footer>
+<div id="modal-root"></div>
+<div id="ctx" class="hidden"></div>
+<div id="toasts"></div>
+<script src="vendor/lightweight-charts.standalone.production.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

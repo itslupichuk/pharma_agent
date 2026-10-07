@@ -22,6 +22,7 @@ dependencies = [
   "pyyaml>=6.0",
   "anthropic>=0.70",
   "tzdata>=2024.1",            # Windows has no system timezone database
+  "pywebview>=5.0; sys_platform == 'win32'",   # native desktop window (Edge WebView2)
 ]
 
 [project.optional-dependencies]
@@ -34,7 +35,7 @@ rxterm = "rxterm.cli:main"
 include = ["rxterm*"]
 
 [tool.setuptools.package-data]
-rxterm = ["brief/templates/*.html", "tui/*.tcss"]
+rxterm = ["brief/templates/*.html", "tui/*.tcss", "gui/static/*", "gui/static/vendor/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,12 +1,8 @@
 # RXTERM — Pharma & Biotech Trading Terminal
 
-A Bloomberg-style terminal and 8:15 AM morning brief for trading pharma and biotech equities and options, long or short.
+A Bloomberg-style desktop app and 8:15 AM morning brief for trading pharma and biotech equities and options, long or short.
 
-```
-┌ RXTERM  LLY <GO> ──────────────────────────────── Wed 07 Oct 2026 08:15:02 EDT  PRE-MKT ┐
-│ XBI 152.02 ▲0.74%  IBB 205.50 ▲1.18%  XPH 63.47 ▲0.89%  LLY 1201.66 ▲3.82%  NVO 38.22 ▲1.84% … │
-│ F1 HELP  F2 MON  F3 NEWS  F4 SCRN  F5 IDEAS  F6 CAL  F7 DES  F8 OMON  F9 W  F10 REFRESH     │
-```
+RXTERM opens in its own window (no console) and is fully mouse-driven: a sortable sector monitor, interactive candlestick charts from 1 day to 10 years, trade-idea cards, screener, catalyst calendar, newswire, option chains, a comparison chart, a watchlist and price alerts.
 
 ## What it does
 
@@ -23,7 +19,7 @@ A Bloomberg-style terminal and 8:15 AM morning brief for trading pharma and biot
 
 ## Windows app (recommended)
 
-**[⬇ Download RXTERM-Setup.exe](https://github.com/itslupichuk/pharma_agent/releases/latest/download/RXTERM-Setup.exe)**. Double-click it and click **Install**. RXTERM appears on your Desktop and in the Start menu. No admin rights, Python or PowerShell needed. Windows may say *"Windows protected your PC"* because the app isn't code-signed: click **More info → Run anyway**.
+**[⬇ Download RXTERM-Setup.exe](https://github.com/itslupichuk/pharma_agent/releases/latest/download/RXTERM-Setup.exe)**. Double-click it and click **Install**. RXTERM appears on your Desktop and in the Start menu and opens as a normal Windows app (it uses the Microsoft Edge WebView2 engine built into Windows). No admin rights, Python, PowerShell or console window needed. Windows may say *"Windows protected your PC"* because the app isn't code-signed: click **More info → Run anyway**.
 
 Every change to the code automatically builds, tests and publishes a new version at that same link. To update, download it again and re-install.
 
@@ -41,15 +37,15 @@ curl -fsSL https://raw.githubusercontent.com/itslupichuk/pharma_agent/HEAD/scrip
 irm https://raw.githubusercontent.com/itslupichuk/pharma_agent/HEAD/scripts/install_windows.ps1 | iex
 ```
 
-For the best look, use Windows Terminal (preinstalled on Windows 11, free in the Microsoft Store on Windows 10). The shortcut opens in it automatically.
-
 The installer downloads RXTERM to `~/RXTERM` and sets up its own Python 3.12 (via [uv](https://docs.astral.sh/uv/), so it doesn't touch your system Python). It then puts an **RXTERM** icon on your Desktop, in Applications/Launchpad (or the Start menu), and adds an `rxterm` command. Double-click the icon to open the terminal in a large dark window. Run the same line again any time to update; your watchlist and settings are kept.
 
 The first time you launch on a Mac, it may ask to let RXTERM control Terminal. Click **OK**.
 
-Manual install for developers: `git clone`, then `pip install -e .`, then `rxterm`. Add `--demo` to run offline on synthetic data.
+Manual install for developers: `git clone`, then `pip install -e .`, then `rxterm` (opens the app window). Add `--demo` to run offline on synthetic data.
 
-## Terminal commands
+## Classic text terminal (optional)
+
+The original keyboard-driven terminal is still available with `rxterm terminal` (or `rxterm-cli terminal` in the installed app folder).
 
 **Full guide with every screen, key and command: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).**
 

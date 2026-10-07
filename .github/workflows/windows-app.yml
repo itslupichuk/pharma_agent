@@ -27,8 +27,6 @@ jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 40
-    env:
-      RXTERM_NO_WT: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +41,9 @@ jobs:
           pip install -e . pyinstaller
 
       - name: Test (source)
-        run: rxterm selftest
+        run: |
+          rxterm selftest
+          rxterm gui-selftest
 
       - name: Build app (PyInstaller)
         run: pyinstaller packaging/rxterm.spec --noconfirm
@@ -51,11 +51,27 @@ jobs:
       - name: Test (packaged app)
         shell: pwsh
         run: |
-          $exe = "dist\RXTERM\RXTERM.exe"
-          & $exe --version; if ($LASTEXITCODE) { exit 1 }
-          & $exe selftest; if ($LASTEXITCODE) { exit 1 }
-          & $exe screen --list | Select-Object -First 3
-          & $exe --demo ideas | Select-Object -First 12
+          $cli = "dist\RXTERM\rxterm-cli.exe"
+          & $cli --version; if ($LASTEXITCODE) { exit 1 }
+          & $cli selftest; if ($LASTEXITCODE) { exit 1 }
+          $out = & $cli gui-selftest; $out; if ($LASTEXITCODE) { exit 1 }
+          if ("$out" -notmatch "pywebview (\d|loaded)") { throw "native window library missing from the build" }
+          & $cli screen --list | Select-Object -First 3
+
+      - name: Test (app window opens, no console)
+        shell: pwsh
+        run: |
+          $env:RXTERM_HOME = "$env:RUNNER_TEMP\rxhome"
+          $p = Start-Process "dist\RXTERM\RXTERM.exe" -ArgumentList "--demo" -PassThru
+          Start-Sleep -Seconds 25
+          $log = Get-Content "$env:RXTERM_HOME\rxterm.log" -Raw -ErrorAction SilentlyContinue
+          $log
+          if ($p.HasExited) { throw "RXTERM.exe exited early (code $($p.ExitCode))" }
+          if ($log -notmatch "RXTERM window at") { throw "window service did not start" }
+          if ($log -match "pywebview failed|pywebview unavailable") { Write-Warning "native window failed; app used the Edge fallback" }
+          $w = Get-Process -Id $p.Id
+          "Main window title: '$($w.MainWindowTitle)'"
+          Stop-Process -Id $p.Id -Force
 
       - name: Build installer (Inno Setup)
         shell: pwsh
@@ -77,7 +93,7 @@ jobs:
           if (-not (Test-Path $app)) { throw "installer did not place RXTERM.exe" }
           $lnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "RXTERM.lnk"
           if (-not (Test-Path $lnk)) { throw "no Desktop shortcut" }
-          & $app selftest; if ($LASTEXITCODE) { exit 1 }
+          & "$env:LOCALAPPDATA\Programs\RXTERM\rxterm-cli.exe" selftest; if ($LASTEXITCODE) { exit 1 }
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

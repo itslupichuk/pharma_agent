@@ -1,6 +1,7 @@
 """RXTERM command line.
 
-  rxterm                      launch the terminal
+  rxterm                      open the RXTERM desktop window
+  rxterm terminal             the classic text terminal (runs inside a console)
   rxterm brief [--send]       build the morning brief (HTML/text/JSON in ./out), optionally e-mail it
   rxterm ideas                print today's trade ideas
   rxterm screen CODE          run a preset screen (rxterm screen --list)
@@ -31,6 +32,104 @@ def cmd_terminal(args) -> int:
     from .tui.app import run
 
     run(_cfg(args))
+    return 0
+
+
+def cmd_gui(args) -> int:
+    from .gui.app import run
+
+    return run(_cfg(args), getattr(args, "mode", "auto"))
+
+
+def cmd_serve(args) -> int:
+    """Run only the window's data service (for development / headless use)."""
+    import time
+
+    from .gui.backend import Backend
+    from .gui.server import Server
+
+    backend = Backend(_cfg(args))
+    backend.start()
+    srv = Server(backend, port=args.port)
+    srv.start()
+    print(srv.url, flush=True)
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        return 0
+
+
+def cmd_gui_selftest(args) -> int:
+    """Start the window service on demo data and exercise every endpoint (used by the app build)."""
+    import tempfile
+    import time
+    import urllib.request
+
+    from .gui.backend import Backend
+    from .gui.server import STATIC, Server
+
+    cfg = replace(settings, demo=True, home=Path(tempfile.mkdtemp()), anthropic_api_key="")
+    backend = Backend(cfg)
+    backend.start()
+    srv = Server(backend)
+    srv.start()
+    base = f"http://127.0.0.1:{srv.port}"
+
+    def get(path: str, post: dict | None = None):
+        req = urllib.request.Request(base + path, headers={"X-RX-Token": srv.token, "Content-Type": "application/json"},
+                                     data=json.dumps(post).encode() if post is not None else None)
+        with urllib.request.urlopen(req, timeout=60) as r:
+            body = r.read()
+            return json.loads(body) if path.startswith("/api/") else body
+
+    for _ in range(240):
+        st = get("/api/status")
+        if st["ready"] and not st["loading"]:
+            break
+        time.sleep(0.25)
+    assert st["ready"], "service never became ready"
+    for f in ("index.html", "app.js", "style.css", "icon.png", "vendor/lightweight-charts.standalone.production.js"):
+        assert (STATIC / f).exists() and len(get("/" + f)) > 500, f"static {f}"
+    m = get("/api/monitor")
+    assert len(m["rows"]) > 50 and m["benchmarks"], "monitor"
+    assert get("/api/stock?ticker=LLY")["ready"], "stock"
+    for tf in ("1D", "5D", "1M", "6M", "1Y", "5Y", "10Y"):
+        assert len(get(f"/api/bars?ticker=LLY&tf={tf}")["bars"]) > 5, f"bars {tf}"
+    assert len(get("/api/ideas")["ideas"]) == 6, "ideas"
+    for sc in get("/api/screens"):
+        assert get(f"/api/screen?code={sc['code']}")["ready"], sc["code"]
+    assert get("/api/calendar")["rows"], "calendar"
+    assert get("/api/news")["items"], "news"
+    assert get("/api/news?ticker=LLY")["ready"], "news ticker"
+    assert get("/api/chain?ticker=LLY")["ok"], "chain"
+    assert len(get("/api/compare?tickers=LLY,NVO,XBI&tf=1Y")["series"]) == 3, "compare"
+    assert get("/api/search?q=lilly")[0]["ticker"] == "LLY", "search"
+    get("/api/watch_toggle", {"ticker": "ABBV"})
+    assert any(r["ticker"] == "ABBV" for r in get("/api/watchlist")["rows"]), "watchlist"
+    get("/api/alert_add", {"ticker": "LLY", "op": ">", "level": 1})
+    assert get("/api/watchlist")["alerts"], "alerts"
+    get("/api/alert_del", {"index": 0})
+    assert get("/api/tape"), "tape"
+    req = urllib.request.Request(base + "/api/status")
+    try:
+        urllib.request.urlopen(req, timeout=5)
+        raise AssertionError("token check")
+    except urllib.error.HTTPError as e:
+        assert e.code == 403
+    srv.stop()
+    try:
+        import webview  # noqa: F401
+
+        try:
+            from importlib.metadata import version
+
+            wv = f"pywebview {version('pywebview')}"
+        except Exception:
+            wv = "pywebview loaded"
+    except Exception as exc:
+        wv = f"pywebview not available ({exc.__class__.__name__}) - will use Edge app window"
+    print(f"RXTERM gui-selftest OK · {len(m['rows'])} stocks · {wv}")
     return 0
 
 
@@ -235,13 +334,27 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("smtp-check", help="diagnose e-mail delivery (prints server replies, never secrets)")
     c.set_defaults(fn=cmd_smtp_check)
 
-    t = sub.add_parser("terminal", help="launch the terminal (default)")
+    g = sub.add_parser("gui", help="open the desktop window (default)")
+    g.add_argument("--mode", choices=("auto", "window", "app", "browser"), default="auto",
+                   help="native window, Edge/Chrome app window, or the default browser")
+    g.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
+    g.set_defaults(fn=cmd_gui)
+
+    sv = sub.add_parser("serve", help="run only the window's local data service and print its URL")
+    sv.add_argument("--port", type=int, default=0)
+    sv.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
+    sv.set_defaults(fn=cmd_serve)
+
+    gs = sub.add_parser("gui-selftest")
+    gs.set_defaults(fn=cmd_gui_selftest)
+
+    t = sub.add_parser("terminal", help="the classic text terminal (inside a console)")
     t.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     t.set_defaults(fn=cmd_terminal)
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
-    return args.fn(args) if args.cmd else cmd_terminal(args)
+    return args.fn(args) if args.cmd else cmd_gui(args)
 
 
 if __name__ == "__main__":

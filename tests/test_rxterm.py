@@ -151,3 +151,32 @@ def test_option_delta():
     assert 0.5 < c < 0.6 and abs(c - p - 1) < 1e-9
     assert bs_delta(100, 150, 0.1, 0.3, True) < 0.05
     assert bs_delta(100, 100, 0.25, float("nan"), True) is None
+
+
+def test_gui_service_endpoints(tmp_path):
+    """The desktop window's local service answers every page's request on demo data."""
+    import time
+    from dataclasses import replace
+
+    from rxterm.config import settings
+    from rxterm.gui.backend import Backend
+    from rxterm.gui.server import Server
+
+    cfg = replace(settings, demo=True, home=tmp_path, anthropic_api_key="")
+    be = Backend(cfg)
+    be.start()
+    for _ in range(240):
+        if be.status()["ready"] and not be.loading:
+            break
+        time.sleep(0.25)
+    srv = Server(be)
+    m = srv.call("monitor", {})
+    assert m["ready"] and len(m["rows"]) > 50
+    assert srv.call("stock", {"ticker": "LLY"})["stats"]
+    assert srv.call("bars", {"ticker": "LLY", "tf": "1D"})["intraday"]
+    assert len(srv.call("ideas", {})["ideas"]) == 6
+    assert srv.call("chain", {"ticker": "LLY"})["rows"]
+    assert len(srv.call("compare", {"tickers": "LLY,NVO", "tf": "6M"})["series"]) == 2
+    srv.call("alert_add", {"ticker": "LLY", "op": "<", "level": 999999})
+    assert be.status()["events"], "alert below a huge level triggers immediately"
+    srv.httpd.server_close()
