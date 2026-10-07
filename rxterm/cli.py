@@ -78,7 +78,7 @@ def cmd_ideas(args) -> int:
     from .engine import Engine
 
     snap = Engine(_cfg(args)).full(ideas=True, use_claude=not args.no_claude)
-    con = Console()
+    con = _console()
     t = Table(title=f"RXTERM ideas — {snap.generated_at:%a %d %b %Y}", header_style="bold #ff9e1b")
     for col in ("Tier", "Ticker", "Dir", "Structure", "Trade", "Tgt", "Stop", "Conv"):
         t.add_column(col)
@@ -111,7 +111,7 @@ def cmd_screen(args) -> int:
         t.add_column(c)
     for tk, r in res.iterrows():
         t.add_row(tk, *[f"{r[c]:.3f}" if isinstance(r[c], float) else str(r[c]) for c in s.columns])
-    Console().print(t)
+    _console().print(t)
     return 0
 
 
@@ -161,7 +161,23 @@ def cmd_selftest(args) -> int:
     return 0
 
 
+def _utf8_stdio() -> None:
+    """Windows consoles and pipes default to a legacy code page; RXTERM prints ▲ ▼ ≤ − etc."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError, OSError):
+            pass
+
+
+def _console():
+    from rich.console import Console
+
+    return Console(legacy_windows=False)
+
+
 def main(argv: list[str] | None = None) -> int:
+    _utf8_stdio()
     p = argparse.ArgumentParser(prog="rxterm", description="RXTERM pharma & biotech trading terminal")
     p.add_argument("--version", action="version", version=f"rxterm {__version__}")
     p.add_argument("--demo", action="store_true", help="run on synthetic data (offline)")
