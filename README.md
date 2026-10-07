@@ -21,7 +21,13 @@ A Bloomberg-style terminal and 8:15 AM morning brief for trading pharma and biot
 | **Theses** | Written by Claude when `ANTHROPIC_API_KEY` is set (or by the scheduled Claude routine). Otherwise a built-in rules-based analyst writer is used |
 | **Morning brief** | HTML e-mail in a sell-side note format: the take, trades, top stories with so-whats, catalyst calendar, movers, screens, segment performance |
 
-## Install: one line, with a Desktop icon
+## Windows app (recommended)
+
+**[⬇ Download RXTERM-Setup.exe](https://github.com/itslupichuk/pharma_agent/releases/latest/download/RXTERM-Setup.exe)**. Double-click it and click **Install**. RXTERM appears on your Desktop and in the Start menu. No admin rights, Python or PowerShell needed. Windows may say *"Windows protected your PC"* because the app isn't code-signed: click **More info → Run anyway**.
+
+Every change to the code automatically builds, tests and publishes a new version at that same link. To update, download it again and re-install.
+
+## Install from source: one line, with a Desktop icon
 
 **Mac.** Open Terminal (⌘ Space, type *Terminal*), paste this and press Enter:
 
