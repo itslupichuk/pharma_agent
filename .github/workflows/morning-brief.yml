@@ -40,8 +40,9 @@ jobs:
       - name: Check configuration and schedule window
         id: gate
         run: |
-          if [ -z "$RXTERM_SMTP_PASSWORD" ]; then
-            echo "RXTERM_SMTP_PASSWORD secret not set — skipping."; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0
+          if [ -z "$RXTERM_SMTP_PASSWORD" ] || [ -z "$RXTERM_SMTP_USER" ]; then
+            echo "::error title=Morning brief not sent::Repository secrets RXTERM_SMTP_USER / RXTERM_SMTP_PASSWORD are not set. Add them under Settings → Secrets and variables → Actions → Secrets (not Variables)."
+            exit 1
           fi
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"; echo "wait=${{ inputs.send_now && 'false' || 'true' }}" >> "$GITHUB_OUTPUT"; exit 0
