@@ -45,6 +45,8 @@ Manual install for developers: `git clone`, then `pip install -e .`, then `rxter
 
 ## Terminal commands
 
+**Full guide with every screen, key and command: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).**
+
 Type in the amber command line and press Enter (`<GO>`). `ESC` returns to the command line.
 
 | Command | Function |
