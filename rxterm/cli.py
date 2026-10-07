@@ -56,9 +56,15 @@ def cmd_brief(args) -> int:
     paths = render.write_outputs(snap, out)
     print(f"· brief written: {paths['html']}  ({len(snap.ideas)} ideas, theses by {snap.writer})", file=sys.stderr)
     if args.send:
-        from .brief.send import send_email
+        from .brief.send import EmailNotConfigured, EmailSendFailed, send_email
 
-        to = send_email(cfg, render.subject_for(snap), paths["html"].read_text(), paths["text"].read_text(), args.to)
+        try:
+            to = send_email(cfg, render.subject_for(snap), paths["html"].read_text(), paths["text"].read_text(), args.to)
+        except EmailNotConfigured as exc:
+            print(f"· {exc}", file=sys.stderr)
+            return 2
+        except EmailSendFailed:
+            return 1
         print(f"· e-mailed to {to}", file=sys.stderr)
     if args.print:
         print(paths["text"].read_text())

@@ -93,3 +93,18 @@ def test_external_theses_merge(snap):
     assert snap.market_take == "Desk take."
     assert snap.ideas[0].thesis == "T" and snap.ideas[0].risks == ["R1", "R2"]
     assert snap.story_takes[0] == "so what"
+
+
+def test_email_secret_cleaning_and_diagnosis(monkeypatch):
+    from rxterm.brief import send
+
+    assert send._clean_secret("abcd efgh ijkl mnop\n") == "abcdefghijklmnop"
+    notes = send._diagnose("me", "short", "smtp.gmail.com")
+    assert any("full Gmail address" in n for n in notes) and any("16 letters" in n for n in notes)
+
+    cfg = replace(settings, smtp_host="127.0.0.1", smtp_port=1, smtp_user="me@gmail.com",
+                  smtp_password="abcd efgh ijkl mnop", email_to="me@gmail.com")
+    monkeypatch.setattr(send, "_send", lambda *a, **k: (_ for _ in ()).throw(OSError("refused")))
+    with pytest.raises(send.EmailSendFailed) as exc:
+        send.send_email(cfg, "s", "<p>h</p>", "t")
+    assert "port 1" in str(exc.value) and "port 587" in str(exc.value)
