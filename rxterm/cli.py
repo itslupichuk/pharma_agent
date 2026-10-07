@@ -150,9 +150,18 @@ def cmd_selftest(args) -> int:
                 await pilot.pause(0.25)
                 if app.snap.ideas:
                     break
-            for cmd in ("LLY", "IDEAS", "SCRN PDUFA", "NEWS", "CAL", "LLY OMON", "W", "HELP", "MON"):
+            for cmd in ("LLY", "IDEAS", "SCRN PDUFA", "NEWS", "CAL", "LLY OMON", "W", "HELP", "MON", "MON SMID",
+                        "ALRT LLY > 1", "COMP LLY NVO XBI 1Y", "LLY 1D", "BACK", "LLY 10Y"):
                 app.run_command(cmd)
                 await pilot.pause(0.3)
+            for code in ("5D", "2Y", "1M"):
+                app.action_set_tf(code)
+                await pilot.pause(0.3)
+            for what in ("mode", "ma", "vol"):
+                app.action_chart(what)
+            await pilot.pause(0.3)
+            assert app.alerts.alerts and app.alerts.alerts[0].triggered, "alerts"
+            assert app.query_one("#des-chart").df is not None, "chart"
             return len(app.snap.ideas)
 
     n = asyncio.run(tui())

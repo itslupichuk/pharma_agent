@@ -55,7 +55,8 @@ class OptionChain:
 class MarketData(Protocol):
     name: str
 
-    def history(self, tickers: Iterable[str], period: str = "1y") -> dict[str, pd.DataFrame]: ...
+    def history(self, tickers: Iterable[str], period: str = "1y", ttl: float = ...) -> dict[str, pd.DataFrame]: ...
+    def bars(self, ticker: str, period: str, interval: str) -> pd.DataFrame | None: ...
     def profile(self, ticker: str) -> dict: ...
     def profiles(self, tickers: Iterable[str]) -> dict[str, dict]: ...
     def expiries(self, ticker: str) -> list[date]: ...
@@ -90,7 +91,7 @@ class YahooMarketData:
         self._yf = yf
 
     # ── prices ─────────────────────────────────────────────────────────
-    def history(self, tickers: Iterable[str], period: str = "1y") -> dict[str, pd.DataFrame]:
+    def history(self, tickers: Iterable[str], period: str = "1y", ttl: float = HISTORY_TTL) -> dict[str, pd.DataFrame]:
         tickers = sorted({t.upper() for t in tickers})
         key = f"hist:{period}:{hashlib.md5(','.join(tickers).encode()).hexdigest()}"
 
@@ -111,7 +112,29 @@ class YahooMarketData:
                     out[t] = df[["Open", "High", "Low", "Close", "Volume"]].astype(float)
             return out or None
 
-        return self.cache.memo(key, HISTORY_TTL, fetch) or {}
+        return self.cache.memo(key, ttl, fetch) or {}
+
+    def bars(self, ticker: str, period: str, interval: str) -> pd.DataFrame | None:
+        """Single-ticker bars for any period/interval (intraday or long history)."""
+        ticker = ticker.upper()
+        intraday = interval.endswith("m") or interval.endswith("h")
+
+        def fetch():
+            try:
+                df = self._yf.Ticker(ticker).history(period=period, interval=interval, auto_adjust=True)
+            except Exception as exc:
+                log.debug("bars failed for %s %s/%s: %s", ticker, period, interval, exc)
+                return None
+            if df is None or df.empty:
+                return None
+            df = df[["Open", "High", "Low", "Close", "Volume"]].astype(float).dropna(subset=["Close"])
+            idx = pd.to_datetime(df.index)
+            if intraday and idx.tz is not None:
+                idx = idx.tz_convert("America/New_York")
+            df.index = idx.tz_localize(None) if idx.tz is not None else idx
+            return df
+
+        return self.cache.memo(f"bars:{ticker}:{period}:{interval}", 60 if intraday else 12 * 3600, fetch)
 
     # ── fundamentals / calendar ────────────────────────────────────────
     def profile(self, ticker: str) -> dict:
@@ -210,9 +233,9 @@ class DemoMarketData:
         rng = np.random.default_rng(_seed(ticker))
         return base * float(rng.uniform(0.3, 2.5)), vol * float(rng.uniform(0.7, 1.4))
 
-    def history(self, tickers: Iterable[str], period: str = "1y") -> dict[str, pd.DataFrame]:
-        want = {"1mo": 22, "3mo": 64, "6mo": 128, "1y": 252, "2y": 504}.get(period, 252)
-        days = 504  # always simulate the same path, then slice, so every period agrees on the last price
+    def history(self, tickers: Iterable[str], period: str = "1y", ttl: float = 0) -> dict[str, pd.DataFrame]:
+        want = {"5d": 5, "1mo": 22, "3mo": 64, "6mo": 128, "1y": 252, "2y": 504, "5y": 1260, "10y": 2520}.get(period, 252)
+        days = 2520  # always simulate the same path, then slice, so every period agrees on the last price
         idx = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=days)
         out = {}
         for t in tickers:
@@ -234,6 +257,37 @@ class DemoMarketData:
             out[t] = pd.DataFrame({"Open": open_, "High": np.maximum(high, open_), "Low": np.minimum(low, open_),
                                    "Close": close, "Volume": volume}, index=idx).tail(want)
         return out
+
+    def bars(self, ticker: str, period: str, interval: str) -> pd.DataFrame | None:
+        t = ticker.upper()
+        if interval in ("1d", "1wk"):
+            df = self.history([t], period).get(t)
+            if df is not None and interval == "1wk":
+                df = df.resample("W-FRI").agg({"Open": "first", "High": "max", "Low": "min", "Close": "last",
+                                               "Volume": "sum"}).dropna()
+            return df
+        # intraday: random walk ending at the latest daily close
+        daily = self.history([t], "1mo").get(t)
+        if daily is None:
+            return None
+        n_days = 1 if period == "1d" else 5
+        step = int(interval.rstrip("m"))
+        per_day = 390 // step
+        _, vol = self._params(t)
+        rng = np.random.default_rng(_seed(t, period, interval, self._day))
+        frames = []
+        for k, day in enumerate(daily.index[-n_days:]):
+            prev = float(daily["Close"].iloc[-n_days - 1 + k]) if len(daily) > n_days else float(daily["Close"].iloc[0])
+            close = float(daily["Close"].loc[day])
+            path = np.cumsum(rng.normal(0, vol / np.sqrt(252 * per_day), per_day))
+            path = path - np.linspace(0, path[-1], per_day)  # pin endpoints
+            px = prev + (close - prev) * np.linspace(0, 1, per_day) + prev * path
+            idx = pd.date_range(day + pd.Timedelta(hours=9, minutes=30), periods=per_day, freq=f"{step}min")
+            o = np.r_[prev, px[:-1]]
+            frames.append(pd.DataFrame({"Open": o, "High": np.maximum(o, px) * (1 + abs(rng.normal(0, 0.0008, per_day))),
+                                        "Low": np.minimum(o, px) * (1 - abs(rng.normal(0, 0.0008, per_day))),
+                                        "Close": px, "Volume": rng.lognormal(10, 0.6, per_day)}, index=idx))
+        return pd.concat(frames)
 
     def profile(self, ticker: str) -> dict:
         t = ticker.upper()

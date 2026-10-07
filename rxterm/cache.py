@@ -59,6 +59,22 @@ class Cache:
                 except (sqlite3.Error, pickle.PicklingError):
                     pass
 
+    def invalidate(self, *prefixes: str) -> None:
+        """Drop cached entries whose key starts with any prefix (all entries if none given)."""
+        with self._lock:
+            for k in [k for k in self._mem if not prefixes or k.startswith(prefixes)]:
+                del self._mem[k]
+            if self._db is not None:
+                try:
+                    if prefixes:
+                        for p in prefixes:
+                            self._db.execute("DELETE FROM kv WHERE k LIKE ?", (p.replace("%", "") + "%",))
+                    else:
+                        self._db.execute("DELETE FROM kv")
+                    self._db.commit()
+                except sqlite3.Error:
+                    pass
+
     def memo(self, key: str, ttl: float, fn: Callable[[], T]) -> T:
         value = self.get(key, ttl)
         if value is None:

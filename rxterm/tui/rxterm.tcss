@@ -134,6 +134,9 @@ OptionList:focus {
 #des-head { height: 3; }
 #des-body { height: 3fr; }
 #des-chart-wrap { width: 2fr; border: round #3a3f47; border-title-color: #000; border-title-background: #ff9e1b; }
+#des-tf, #comp-tf { height: 1; background: #0b0d10; padding: 0 1; }
+#COMP { padding: 0 1; }
+#comp-chart { height: 1fr; border: round #3a3f47; }
 #des-stats { width: 44; }
 #des-bottom { height: 2fr; }
 #des-news { width: 3fr; height: 100%; }
@@ -148,5 +151,6 @@ OptionList:focus {
 /* W */
 #w-title { height: 3; }
 #w-table { height: 1fr; }
+#w-alerts { height: auto; max-height: 12; min-height: 3; }
 
 #HELP { padding: 1 2; }

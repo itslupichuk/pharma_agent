@@ -94,6 +94,21 @@ class Engine:
         snap.calendar = cat_mod.build_calendar(snap.profiles, snap.news, self.cache, self.cfg.catalysts_path,
                                                demo=self.cfg.demo)
 
+    def refresh_quotes(self, snap: Snapshot) -> Snapshot:
+        """Splice the latest daily bars (≈1-min fresh) into the snapshot without reloading everything."""
+        from dataclasses import replace as _replace
+
+        fresh = self.md.history(list(snap.history), "5d", ttl=55)
+        hist = dict(snap.history)
+        for t, f in fresh.items():
+            old = hist.get(t)
+            if old is None or f is None or f.empty:
+                continue
+            hist[t] = pd.concat([old[old.index < f.index[0]], f]).tail(max(len(old), 30))
+        new = _replace(snap, history=hist)
+        self.compute(new)
+        return new
+
     def compute(self, snap: Snapshot) -> None:
         snap.board = signals.build_board(snap.history, snap.profiles, ticker_sentiment(snap.news), snap.calendar)
 

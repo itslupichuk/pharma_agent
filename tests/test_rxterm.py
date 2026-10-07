@@ -108,3 +108,46 @@ def test_email_secret_cleaning_and_diagnosis(monkeypatch):
     with pytest.raises(send.EmailSendFailed) as exc:
         send.send_email(cfg, "s", "<p>h</p>", "t")
     assert "port 1" in str(exc.value) and "port 587" in str(exc.value)
+
+
+def test_timeframes_cover_intraday_to_10y():
+    from rxterm.data import bars
+    from rxterm.data.market import DemoMarketData
+
+    md = DemoMarketData()
+    daily = md.history(["LLY"], "1y")["LLY"]
+    last = float(daily["Close"].iloc[-1])
+    for tf in bars.TIMEFRAMES:
+        df = bars.get_bars(md, "LLY", tf.code, daily)
+        assert df is not None and len(df) >= 2, tf.code
+        assert abs(float(df["Close"].iloc[-1]) / last - 1) < 0.05, tf.code
+    assert bars.resolve("max") == "10Y" and bars.resolve("5d") == "5D" and bars.resolve("XYZ") is None
+    assert bars.step("1D", -1) == "1D" and bars.step("6M", 1) == "YTD" and bars.step("10Y", 1) == "10Y"
+
+
+def test_alerts_parse_trigger_persist(tmp_path):
+    from rxterm.alerts import AlertBook, parse
+
+    assert parse(["LLY", ">", "1,250"]) == ("LLY", ">", 1250.0)
+    assert parse(["LLY", "<1100"]) == ("LLY", "<", 1100.0)
+    assert parse(["LLY", "abc"]) is None
+    book = AlertBook(tmp_path / "alerts.json")
+    up = book.add("LLY", 1250, None, last=1200)      # auto direction: above
+    dn = book.add("NVO", 30, None, last=38)          # auto direction: below
+    assert (up.op, dn.op) == (">", "<")
+    assert book.check({"LLY": 1240, "NVO": 31}) == []
+    hits = book.check({"LLY": 1251, "NVO": 29.5})
+    assert {a.ticker for a, _ in hits} == {"LLY", "NVO"}
+    assert book.check({"LLY": 1300}) == []           # fires once
+    assert len(AlertBook(tmp_path / "alerts.json").alerts) == 2
+    assert book.remove("LLY") == 1 and book.remove("ALL") == 1
+
+
+def test_option_delta():
+    from rxterm.tui.app import bs_delta
+
+    c = bs_delta(100, 100, 0.25, 0.3, True)
+    p = bs_delta(100, 100, 0.25, 0.3, False)
+    assert 0.5 < c < 0.6 and abs(c - p - 1) < 1e-9
+    assert bs_delta(100, 150, 0.1, 0.3, True) < 0.05
+    assert bs_delta(100, 100, 0.25, float("nan"), True) is None

@@ -12,7 +12,7 @@ RXTERM is a keyboard-driven terminal for trading pharma and biotech stocks and o
 | **Quit** | `Ctrl + Q` |
 | **Best view** | Maximize the window. `F11` or `Alt + Enter` switches Windows Terminal to full screen. |
 | **Offline demo** | `rxterm --demo` runs on made-up data, which is useful for learning the keys. |
-| **Update** | Run the installer again. Your watchlist and settings are kept. |
+| **Update** | Download and run **RXTERM-Setup.exe** again from the same link. Your watchlist, alerts and settings are kept. |
 
 When it opens, the bottom status line reads *Prices loaded…*, then *News loaded…*, *Fundamentals loaded…*, and finally **Ready**. That takes about a minute. You can start using it as soon as prices appear. Trade ideas fill in last.
 
@@ -43,35 +43,55 @@ When it opens, the bottom status line reads *Prices loaded…*, then *News loade
 
 | Key | Action |
 |---|---|
-| `Esc` | Jump to the command line and clear it |
+| `/` or `Esc` | Jump to the command line |
+| `↑` `↓` *(in the command line)* | Scroll back and forward through commands you've typed. The history is saved between sessions |
+| `→` *(in the command line)* | Accept the grey autocomplete suggestion. Type `vk` and it suggests `VKTX` |
 | `Enter` | Run the typed command, or open the highlighted row |
-| `↑` `↓` | Move through rows and lists |
-| `Page Up` / `Page Down` | Scroll a page |
-| `Tab` / `Shift + Tab` | Move between panels on the current screen |
-| `F1` | **HELP**: command reference |
-| `F2` | **MON**: sector monitor (home screen) |
-| `F3` | **NEWS**: full news wire |
-| `F4` | **SCRN**: screener |
-| `F5` | **IDEAS**: today's trades |
-| `F6` | **CAL**: catalyst calendar |
-| `F7` | **DES**: description page for the current ticker |
-| `F8` | **OMON**: option monitor for the current ticker |
-| `F9` | **W**: watchlist |
-| `F10` | **REFRESH**: reload all data |
-| `Ctrl + Q` (or `Ctrl + C`) | Quit |
+| `Backspace` | **Back** to the previous screen or ticker |
+| `?` | Pop up the keys for the screen you're on |
+| `+` / `−` | Add or remove the highlighted (or current) ticker on your watchlist |
+| `y` | **Copy** to the clipboard: the trade line, option contract, or ticker and price (details below) |
+| `↑` `↓` · `Page Up` / `Page Down` | Move through rows and lists |
+| `Tab` / `Shift + Tab` | Move between panels |
+| `F1` – `F10` | HELP · MON · NEWS · SCRN · IDEAS · CAL · DES · OMON · W · REFRESH |
+| `Ctrl + Q` | Quit |
 
-> On many laptops the F-keys need **Fn** held down. Every F-key also has a typed command (`HELP`, `MON`, `NEWS`, …), so you never strictly need them.
+> On many laptops the F-keys need **Fn** held down. Every F-key also has a typed command (`HELP`, `MON`, `NEWS`, …).
 
-### Keys that work on one screen
+### Charts (DES and COMP)
+
+| Key | Action |
+|---|---|
+| `1` `2` `3` `4` `5` `6` `7` `8` `9` `0` | **1D · 5D · 1M · 3M · 6M · YTD · 1Y · 2Y · 5Y · 10Y**. You can also click the buttons above the chart |
+| `[` / `]` | Step to a shorter / longer timeframe |
+| `t` | Switch between **line** and **candlestick** chart |
+| `m` | Moving average: off → 20 → 50 → 200 |
+| `v` | Volume bars on / off |
+| `,` / `.` | Previous / next ticker in the list you opened it from (monitor, screener, watchlist, calendar) |
+
+1D shows 5-minute bars for the current session and 5D shows 30-minute bars; both refresh every minute while the market is open. 1M–1Y are daily bars, 2Y is daily, and 5Y/10Y are weekly. The header shows the last price, the % change over the period, and the period high and low.
+
+### Tables
 
 | Screen | Key | Action |
 |---|---|---|
-| MON | `s` | Cycle the sort column: 1D → 5D → 1M → 3M → YTD → RSI → RV20 → Volume× → Long score → Short score |
-| DES | `1` `3` `6` `y` | Chart period 1 month / 3 months / 6 months / 1 year |
-| NEWS | `o` | Open the highlighted story in your web browser |
-| MON, SCRN, CAL, W | `Enter` | Open the highlighted ticker's DES page. On MON's Top News panel, Enter opens the story's ticker |
+| MON, SCRN, W, CAL | **Click a column header** | Sort by that column. Click again to reverse |
+| MON | `s` | Cycle the sort: 1D → 5D → 1M → 3M → YTD → RSI → RV20 → Volume× → Long score → Short score |
+| MON | `f` | Cycle the segment filter: All → Big Pharma → Large-Cap Biotech → SMID Biotech → Specialty & Generics → Watchlist |
+| MON, SCRN, CAL, W | `Enter` | Open the highlighted ticker. On MON's Top News panel, Enter opens the story's ticker |
+| OMON | `[` / `]` | Previous / next expiry |
+| NEWS, DES news | `Enter` or `o` | Open the story in your web browser |
 
-Single-letter keys only work when the cursor is in a table, not in the command line. Press an arrow key or `Tab` to move into the table first.
+### What `y` copies
+
+| Where | What lands on your clipboard |
+|---|---|
+| IDEAS | All six trade lines, ready to paste into notes or a broker ticket |
+| DES | Today's RXTERM trade for that ticker, or the ticker and price |
+| OMON | The highlighted strike: `LLY 13NOV26 1195 CALL 60.20/71.05 \| LLY 13NOV26 1195 PUT …` (bid/ask) |
+| MON, SCRN, W, CAL | The highlighted ticker and its price |
+
+Single-letter keys only work when the cursor is in a table or chart, not in the command line. Press `Tab` or an arrow key to leave the command line first.
 
 ---
 
@@ -83,38 +103,55 @@ Type these in the command line and press **Enter**. Case doesn't matter, and `<G
 
 | Command | What you get |
 |---|---|
-| `LLY` | **DES** page: price chart, key stats, next catalyst, news, the RXTERM idea if there is one, company profile |
-| `LLY 3M` | DES with a 3-month chart. Periods: `1M` `3M` `6M` `1Y` `YTD` |
-| `LLY GP` or `GP LLY` | Price chart (same as DES) |
-| `LLY GP 1Y` | Price chart, 1-year period |
-| `LLY OMON` | Option chain for LLY. `OM`, `OPT` and `OPTIONS` also work |
-| `OMON LLY` | Same |
-| `LLY N` or `N LLY` | News for LLY only. `NEWS` and `CN` also work |
-| `DES LLY` | Description page (same as `LLY`) |
+| `LLY` | **DES** page: chart, key stats, next catalyst, news, the RXTERM idea if there is one, company profile |
+| `LLY 5D` | DES with that timeframe. Any of `1D 5D 1M 3M 6M YTD 1Y 2Y 5Y 10Y` (`MAX` = 10Y) |
+| `LLY GP 1Y` or `GP LLY` | Price chart (same as DES) |
+| `LLY OMON` | Option chain. `OM`, `OPT` and `OPTIONS` also work |
+| `LLY N` or `N LLY` | News for LLY only |
 | `vertex` | Company names work too: opens the first match (VRTX) |
 
-### Function commands
+### Compare
+
+| Command | What you get |
+|---|---|
+| `COMP LLY NVO XBI` | Up to six tickers on one chart, as % change from the start of the period |
+| `COMP LLY NVO 5Y` | Same, with a timeframe |
+| `LLY VS NVO` | Quick two-ticker comparison |
+| `COMP` | Compares the current ticker with XBI |
+
+### Alerts
+
+| Command | Action |
+|---|---|
+| `ALRT LLY > 1250` | Alert when LLY trades at or above 1,250 |
+| `ALRT VKTX < 25` | Alert when VKTX trades at or below 25 |
+| `ALRT LLY 1250` | Direction picked automatically from the current price |
+| `ALRT` | Show your alerts (on the W screen) |
+| `ALRTDEL LLY` / `ALRTDEL ALL` | Remove one ticker's alerts / all alerts |
+
+Alerts are checked every minute while the market is open. When one hits, RXTERM beeps and shows a pop-up for a minute, and the alert is marked ✔ on the W screen. A 🔔 count of armed alerts shows in the status line. Alerts only fire while RXTERM is open; the morning email doesn't check them.
+
+### Screens and lists
 
 | Command | Screen |
 |---|---|
 | `MON` | Sector monitor |
+| `MON SMID` | Monitor filtered to a segment: `ALL` `BIG` `LARGE` `SMID` `SPEC` `W` (your watchlist) |
 | `NEWS` | News wire |
-| `SCRN` | Screener (opens the last screen used) |
-| `SCRN PDUFA` | Screener with a specific preset (list in section 6) |
-| `IDEAS` | Today's conservative and aggressive trades |
+| `SCRN` · `SCRN PDUFA` | Screener (last used, or a specific preset from section 6) |
+| `IDEAS` | Today's trades |
 | `CAL` | Catalyst calendar |
 | `DES` / `OMON` | Description or options for the current ticker |
-| `W` | Watchlist |
+| `W` | Watchlist and price alerts |
+| `WADD VKTX MDGL` / `WDEL VKTX` | Add / remove watchlist tickers (or press `+` / `−` on any row) |
+| `BACK` | Previous screen (same as `Backspace`) |
 | `HELP` | Help |
-| `REFRESH` | Reload all data |
+| `REFRESH` | Force-reload all prices, news and option chains (`F10`) |
 | `Q`, `QUIT`, `EXIT` | Quit |
 
-### Watchlist commands
+### RXTERM remembers
 
-| Command | Action |
-|---|---|
-| `WADD VKTX` | Add a ticker. You can list several: `WADD VKTX MDGL SMMT` |
-| `WDEL VKTX` | Remove a ticker |
+When you reopen RXTERM it comes back on the screen and ticker you left, with the same chart timeframe, chart style, moving average, monitor sort and filter, screener preset, and your command history.
 
 ---
 
@@ -124,7 +161,7 @@ Type these in the command line and press **Enter**. Case doesn't matter, and `<G
 
 The home screen.
 
-**Left panel:** every name in coverage, with these columns:
+**Left panel:** every name in coverage (or the segment you filtered to). The title shows the filter and the sort. Click any header to sort, or use `s` and `f`.
 
 | Column | Meaning |
 |---|---|
@@ -137,35 +174,42 @@ The home screen.
 | SIGNAL | STRONG BUY / BUY / NEUTRAL / SELL / STRONG SELL, from RXTERM's scores |
 | 60D | 60-day mini chart |
 
-**Right panels:** benchmarks (XBI, IBB, XPH, SPY) with breadth, segment performance (Big Pharma, Large-Cap Biotech, SMID Biotech, Specialty & Generics), top news, and today's trades.
+**Right panels:** benchmarks (XBI, IBB, XPH, SPY) with breadth, segment performance, top news, and today's trades.
 
 ### DES: Description page (`LLY`, F7)
 
-- **Header:** price, today's move, pre-market move when available, signal, and long/short scores.
-- **Chart:** green or red price line with the moving average in blue. Use `1` `3` `6` `y` to change the period.
-- **Key stats:** market cap, forward P/E, beta, 52-week range, distance from the 50- and 200-day averages, RSI, volatility, relative strength vs XBI, short interest, Street target and upside, analyst consensus, cash, revenue growth, next earnings, next catalyst (in red when it's an FDA event), and news count.
-- **News:** this ticker's headlines. ▲ is positive, ▼ is negative.
+- **Header:** price, today's move, pre-market move when available, signal, long/short scores, ★ if it's on your watchlist, and 🔔 with any alert levels.
+- **Timeframe bar:** clickable buttons `1D` … `10Y` plus `LINE/CANDLE`, `MA`, `VOL`. The active one is amber.
+- **Chart:** line or candlesticks (green up, red down), the moving average in blue, and volume bars underneath. The axis shows times for 1D/5D and dates otherwise.
+- **Key stats:** market cap, forward P/E, beta, 52-week range, distance from the 50- and 200-day averages, RSI, volatility, relative strength vs XBI, short interest, Street target and upside, consensus, cash, revenue growth, next earnings, next catalyst (red when it's an FDA event), and news count.
+- **News:** this ticker's headlines. ▲ positive, ▼ negative. Press Enter to open the story.
 - **Profile:** the next catalyst, RXTERM's trade idea and thesis if this ticker is one of today's picks, and the business description.
+
+### COMP: Compare (`COMP LLY NVO XBI`)
+
+Every ticker on one chart as % change from the start of the period, each in its own colour, with a dotted zero line. The legend shows each ticker's total change. Change the timeframe with `1`–`0`, `[` `]` or the buttons.
 
 ### OMON: Option monitor (`LLY OMON`, F8)
 
-- **Left:** expiry dates with days to expiry. Use the arrow keys to choose one, and the chain loads automatically. It opens on the expiry nearest 30 days.
+- **Left:** expiry dates with days to expiry. Use `↑` `↓` or `[` `]`, and the chain loads automatically. It opens on the expiry nearest 30 days.
 - **Header:** spot price, ATM implied volatility, 20-day realized volatility, the **implied move** to expiry, and put/call ratios by volume and open interest.
-- **Chain:** calls on the left, puts on the right, strike in the middle. The at-the-money strike is highlighted amber, in-the-money rows have a dark-green background, and **green volume** means volume exceeded open interest (fresh positioning).
+- **Chain:** calls on the left, puts on the right, strike in the middle. Columns are bid, ask, last, implied volatility, **Δ (delta)**, volume and open interest. The at-the-money strike is amber, in-the-money rows have a dark-green background, and **green volume** means volume exceeded open interest (fresh positioning).
+- Delta is roughly the option's price move for a $1 stock move, and a rough probability of finishing in the money. Press `y` to copy the highlighted strike's contracts with bid/ask.
 
 ### NEWS: News wire (F3)
 
-Every story from STAT, BioPharma Dive, Endpoints, Fierce, FDA, GlobeNewswire, PR Newswire, Google News and Yahoo Finance, newest first. Columns show time, source, tickers, tone (▲ ▼ •) and event tags such as `FDA APPROVAL`, `CRL`, `TRIAL WIN`, `TRIAL FAIL`, `M&A`, `FINANCING`, `GUIDANCE`, `ANALYST`, `POLICY` and `SAFETY`. The panel underneath previews the highlighted story. Press `o` to open it in your browser.
+Every story from STAT, BioPharma Dive, Endpoints, Fierce, FDA, GlobeNewswire, PR Newswire, Google News and Yahoo Finance, newest first, with source, tickers, tone (▲ ▼ •) and event tags (`FDA APPROVAL`, `CRL`, `TRIAL WIN`, `TRIAL FAIL`, `M&A`, `FINANCING`, `GUIDANCE`, `ANALYST`, `POLICY`, `SAFETY`). The panel underneath previews the highlighted story. Press `Enter` or `o` to open it in your browser.
 
 ### SCRN: Screener (F4)
 
-Choose a screen on the left with the arrow keys; results update as you move. Press Enter on a result row to open that ticker. All 15 presets are listed in section 6.
+Choose a screen on the left with the arrow keys; results update as you move. Press Enter on the list to jump into the results, click headers to sort, and press Enter on a row to open that ticker. All 15 presets are in section 6.
 
 ### IDEAS: Today's trades (F5)
 
 - **The Take** (top): the market summary for the day.
 - **Conservative** (blue, left): three large-cap trades using defined-risk spreads, 30–60 days to expiry.
 - **Aggressive** (amber, right): three smaller-biotech or FDA-catalyst trades using outright calls/puts, spreads, or straddles into binary events.
+- Press `y` to copy all six trade lines.
 
 Each card shows:
 
@@ -184,7 +228,7 @@ Each card shows:
 
 ### CAL: Catalyst calendar (F6)
 
-Upcoming events sorted by date:
+Upcoming events, sorted by date (click headers to re-sort):
 
 | Type | Meaning |
 |---|---|
@@ -196,9 +240,9 @@ Upcoming events sorted by date:
 
 Press Enter on a row to open the ticker.
 
-### W: Watchlist (F9)
+### W: Watchlist and alerts (F9)
 
-Your names with price, moves, RSI, signal, next catalyst and latest headline. Manage it with `WADD` and `WDEL`.
+Your names with price, moves, RSI, signal, next catalyst and latest headline. Click headers to sort. Underneath, **Price alerts** lists each alert, how far the price is from it, and when it fired. Manage the list with `+` / `−` on any screen, `WADD` / `WDEL`, `ALRT` and `ALRTDEL`.
 
 ---
 
@@ -269,9 +313,11 @@ Everything lives in your user folder (`C:\Users\<you>`):
 | `RXTERM\.env` | Settings. Add `ANTHROPIC_API_KEY=...` to have Claude write the theses in the terminal |
 | `.rxterm\watchlist.txt` | Your watchlist, one ticker per line |
 | `.rxterm\catalysts.yaml` | Your own catalyst dates, e.g. `- {ticker: MDGL, date: 2026-12-18, type: PDUFA, event: "Rezdiffra sNDA"}` |
+| `.rxterm\alerts.json` | Your price alerts |
+| `.rxterm\state.json` | Last screen, ticker, chart settings and command history |
 | `.rxterm\cache.db` | Data cache. Safe to delete; it rebuilds automatically |
 
-**Refresh timing:** prices and news refresh about every 5–10 minutes on their own. `F10` reloads anything older than that. Fundamentals refresh every 12 hours and trial data daily. To force a completely fresh load, delete `.rxterm\cache.db` and restart RXTERM.
+**Refresh timing:** quotes refresh **every minute while the market is open** (every 5 minutes otherwise); the status line shows the time of the last update. News refreshes every 10 minutes, fundamentals every 12 hours, and trial data daily. `F10` / `REFRESH` forces a fresh download of prices, news and option chains.
 
 ---
 
@@ -299,7 +345,9 @@ Run these in any terminal window:
 | Boxes or question marks instead of charts | Use **Windows Terminal** (free in the Microsoft Store), not the old black console |
 | Layout cramped or cut off | Maximize the window or press `F11`. RXTERM is designed for at least 160 × 45 characters |
 | F-keys do nothing | Hold `Fn`, or type the command (`MON`, `IDEAS`, …) |
-| `s`, `1`, `o` keys do nothing | The cursor is in the command line. Press an arrow key or `Tab` to move into the table |
+| `s`, `1`, `t`, `y` keys do nothing | The cursor is in the command line. Press `Tab` or an arrow key to move into the table or chart |
+| `y` doesn't copy | Use Windows Terminal (it supports clipboard copy from terminal apps). On the classic console RXTERM falls back to Windows' `clip`, which also works |
+| 1D chart is empty before 9:30 ET | There's no intraday data yet today; 1D shows the last session once Yahoo publishes it. Use 5D |
 | "No market data returned" | Check your internet connection and press `F10`. To try offline, run `rxterm --demo` |
 | A ticker shows "no data" | It may have been acquired or delisted. RXTERM drops those automatically |
 | Option chain says "unavailable" | Yahoo doesn't list options for that name, or rate-limited the request. Try again in a minute |
