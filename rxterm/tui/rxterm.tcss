@@ -154,3 +154,13 @@ OptionList:focus {
 #w-alerts { height: auto; max-height: 12; min-height: 3; }
 
 #HELP { padding: 1 2; }
+
+/* mouse button bars */
+#mon-bar, #des-actions, #ideas-bar, #news-actions, #comp-bar, #omon-actions, #w-bar {
+    height: 1;
+    background: #0b0d10;
+    padding: 0 1;
+    margin: 0 0 0 0;
+}
+#fkeys { height: 1; background: #000000; padding: 0 1; }
+Static { link-style: none; link-color-hover: #000000; link-background-hover: #ffd28a; link-style-hover: bold; }

@@ -23,21 +23,47 @@ When it opens, the bottom status line reads *Prices loaded…*, then *News loade
 ```
 ┌ RXTERM  [ command line — type here and press Enter ]       Wed 07 Oct 2026 09:41 EDT  MKT OPEN ┐
 │ XBI 152.20 ▲0.86%  IBB 205.45 ▲1.16%  XPH 63.49 ▲0.92%  SPY 775.43 ▼0.47%  LLY 1203.93 ▲4.01% … │  ← ticker tape
-│ F1 HELP  F2 MON  F3 NEWS  F4 SCRN  F5 IDEAS  F6 CAL  F7 DES  F8 OMON  F9 W  F10 REFRESH         │  ← function keys
+│ ◀ BACK  MONITOR  TRADES  STOCK  CHART COMPARE  OPTIONS  SCREENER  CALENDAR  NEWS  WATCHLIST  …  │  ← clickable tabs
 │                                                                                                 │
 │                              main panel (changes with each function)                           │
 │                                                                                                 │
 │ ● Ready · 95 securities · data as of 2026-10-07 · Yahoo Finance (delayed)                       │  ← status line
 ```
 
-- **Command line** (amber, top). Type a command and press **Enter**, which works like Bloomberg's `<GO>` key.
+- **Tabs** (under the ticker tape). Click to switch screens. `F1`–`F10` do the same from the keyboard.
+- **Search box** (top, optional). Type a ticker or command and press **Enter**, which works like Bloomberg's `<GO>` key.
 - **Ticker tape.** Benchmarks first, then the largest names, scrolling continuously.
 - **Market clock.** Shows PRE-MKT, MKT OPEN, AFTER-HRS or CLOSED for New York.
 - **Status line.** Shows what's loading, the data source, and errors.
 
 ---
 
-## 3. Keyboard shortcuts
+## 3. Using the mouse
+
+Everything in RXTERM works with the mouse. Typing is optional.
+
+| Click | What happens |
+|---|---|
+| **Tabs along the top** | `◀ BACK` · `MONITOR` · `TRADES` · `STOCK` · `CHART COMPARE` · `OPTIONS` · `SCREENER` · `CALENDAR` · `NEWS` · `WATCHLIST` · `HELP` · `🔍 FIND STOCK` · `⟳ REFRESH` |
+| **Any stock in a list** | Opens its page. One click, in the monitor, screener, calendar, watchlist, top news and today's trades |
+| **A column title** | Sorts by that column. Click again to reverse |
+| **Monitor: SHOW buttons** | `ALL` · `BIG PHARMA` · `LARGE-CAP BIO` · `SMID BIO` · `SPECIALTY` · `★ WATCHLIST` |
+| **Stock page buttons** | `◀ PREV` / `NEXT ▶` stock · `☆ ADD TO WATCHLIST` · `OPTIONS` · `NEWS` · `COMPARE +` · `🔔 SET ALERT` · `⧉ COPY` |
+| **Chart buttons** | `1D` `5D` `1M` `3M` `6M` `YTD` `1Y` `2Y` `5Y` `10Y` · `LINE/CANDLE` · `MA` · `VOL` |
+| **Compare buttons** | `TICKER ✕` removes · `+ XBI` `+ IBB` `+ XPH` `+ SPY` · `+ ANY STOCK…` opens the stock picker |
+| **Options buttons** | Click an expiry on the left · `◀ EARLIER` / `LATER ▶` · click a strike row then `⧉ COPY SELECTED STRIKE` |
+| **Watchlist buttons** | `+ ADD STOCK…` · `✕ REMOVE SELECTED` · `🔔 ALERT ON SELECTED…` · `✕` next to an alert deletes it |
+| **News** | Click a story to preview it · `OPEN STORY ↗` opens it in your browser · `OPEN TICKER` buttons |
+| **Today's trades** | Click a ticker button to open it · `⧉ COPY ALL TRADES` |
+| **🔔 SET ALERT** | A pop-up with the current price, `−10%` … `+10%` quick buttons, and `Alert above ▲` / `Alert below ▼` |
+| **🔍 FIND STOCK / + ADD STOCK** | A list of every stock: click one. Typing in the box filters the list, if you want to |
+| **Mouse wheel** | Scrolls lists, tables and panels |
+
+## 3b. Speed
+
+RXTERM saves your last session when you close it. Next time it opens, that session appears in about a second and live data replaces it in the background over the next few seconds; the status line says when. The very first launch, with nothing saved yet, takes about 15 seconds.
+
+## 4. Keyboard shortcuts (optional)
 
 ### Everywhere
 
@@ -95,7 +121,7 @@ Single-letter keys only work when the cursor is in a table or chart, not in the 
 
 ---
 
-## 4. Commands
+## 5. Typed commands (optional)
 
 Type these in the command line and press **Enter**. Case doesn't matter, and `<GO>` is optional.
 
@@ -138,7 +164,7 @@ Alerts are checked every minute while the market is open. When one hits, RXTERM 
 | `MON` | Sector monitor |
 | `MON SMID` | Monitor filtered to a segment: `ALL` `BIG` `LARGE` `SMID` `SPEC` `W` (your watchlist) |
 | `NEWS` | News wire |
-| `SCRN` · `SCRN PDUFA` | Screener (last used, or a specific preset from section 6) |
+| `SCRN` · `SCRN PDUFA` | Screener (last used, or a specific preset from section 7) |
 | `IDEAS` | Today's trades |
 | `CAL` | Catalyst calendar |
 | `DES` / `OMON` | Description or options for the current ticker |
@@ -155,7 +181,7 @@ When you reopen RXTERM it comes back on the screen and ticker you left, with the
 
 ---
 
-## 5. Screens explained
+## 6. Screens explained
 
 ### MON: Sector monitor (F2)
 
@@ -202,7 +228,7 @@ Every story from STAT, BioPharma Dive, Endpoints, Fierce, FDA, GlobeNewswire, PR
 
 ### SCRN: Screener (F4)
 
-Choose a screen on the left with the arrow keys; results update as you move. Press Enter on the list to jump into the results, click headers to sort, and press Enter on a row to open that ticker. All 15 presets are in section 6.
+Choose a screen on the left with the arrow keys; results update as you move. Press Enter on the list to jump into the results, click headers to sort, and press Enter on a row to open that ticker. All 15 presets are in section 7.
 
 ### IDEAS: Today's trades (F5)
 
@@ -246,7 +272,7 @@ Your names with price, moves, RSI, signal, next catalyst and latest headline. Cl
 
 ---
 
-## 6. Screener presets
+## 7. Screener presets
 
 Run one with `SCRN <CODE>`, e.g. `SCRN SQUEEZE`.
 
@@ -270,7 +296,7 @@ Run one with `SCRN <CODE>`, e.g. `SCRN SQUEEZE`.
 
 ---
 
-## 7. How the signals work
+## 8. How the signals work
 
 Every name is ranked against the rest of the coverage on:
 
@@ -295,7 +321,7 @@ This produces a **long score** and a **short score** from 0 to 100:
 
 ---
 
-## 8. Daily e-mail
+## 9. Daily e-mail
 
 The morning brief arrives at **8:15 AM New York time** on weekdays. It's sent from GitHub, so your computer can be off. It contains the same trades, the market take, top stories, the catalyst calendar, movers, screens and sector performance.
 
@@ -304,7 +330,7 @@ The morning brief arrives at **8:15 AM New York time** on weekdays. It's sent fr
 
 ---
 
-## 9. Settings and files
+## 10. Settings and files
 
 Everything lives in your user folder (`C:\Users\<you>`):
 
@@ -314,6 +340,7 @@ Everything lives in your user folder (`C:\Users\<you>`):
 | `.rxterm\watchlist.txt` | Your watchlist, one ticker per line |
 | `.rxterm\catalysts.yaml` | Your own catalyst dates, e.g. `- {ticker: MDGL, date: 2026-12-18, type: PDUFA, event: "Rezdiffra sNDA"}` |
 | `.rxterm\alerts.json` | Your price alerts |
+| `.rxterm\last_session.pkl` | Your last session, so RXTERM opens instantly. Safe to delete |
 | `.rxterm\state.json` | Last screen, ticker, chart settings and command history |
 | `.rxterm\cache.db` | Data cache. Safe to delete; it rebuilds automatically |
 
@@ -321,7 +348,7 @@ Everything lives in your user folder (`C:\Users\<you>`):
 
 ---
 
-## 10. Command-line extras
+## 11. Command-line extras
 
 Run these in any terminal window:
 
@@ -338,7 +365,7 @@ Run these in any terminal window:
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -354,7 +381,7 @@ Run these in any terminal window:
 
 ---
 
-## 12. Important
+## 13. Important
 
 - Prices and options come from Yahoo Finance: **about 15 minutes delayed** and unofficial. Option prices shown are mid-quotes. **Check live quotes with your broker before placing any order.**
 - FDA dates come from public trackers and news. Confirm them against the company's own press release.

@@ -7,12 +7,16 @@ staged so the terminal can paint prices first and enrich in the background.
 from __future__ import annotations
 
 import logging
+import pickle
+import time
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
 import pandas as pd
 
-from . import universe
+from . import __version__, universe
 from .analytics import ideas as ideas_mod
 from .analytics import signals, thesis
 from .cache import Cache
@@ -85,7 +89,8 @@ class Engine:
         snap.history = self.md.history(self.tickers, "1y")
 
     def load_profiles(self, snap: Snapshot) -> None:
-        snap.profiles = self.md.profiles([t for t in snap.history if not universe.UNIVERSE[t].is_etf])
+        names = [t for t in snap.history if not universe.UNIVERSE[t].is_etf] or [s.ticker for s in universe.equities()]
+        snap.profiles = self.md.profiles(names)
 
     def load_news(self, snap: Snapshot) -> None:
         snap.news = self.wire.fetch()
@@ -115,6 +120,65 @@ class Engine:
     def make_ideas(self, snap: Snapshot, use_claude: bool = True) -> None:
         snap.ideas = ideas_mod.generate(snap.board, self.md)
         thesis.write_all(snap, self.cfg.anthropic_api_key, self.cfg.model, use_claude=use_claude)
+
+    def load_all(self, progress=None, use_claude: bool = True) -> Snapshot:
+        """Everything, with independent sources fetched in parallel (~2× faster than `full`).
+
+        `progress(snapshot, message)` is called with usable partial snapshots as stages land.
+        """
+        snap = self.new_snapshot()
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            f_prices = pool.submit(self.load_prices, snap)
+            f_news = pool.submit(self.load_news, snap)
+            f_prof = pool.submit(lambda: self.md.profiles([s.ticker for s in universe.equities()]))
+            f_trials = None if self.cfg.demo else pool.submit(cat_mod.from_clinicaltrials, self.cache)
+            f_prices.result()
+            if progress:
+                early = replace(snap)
+                self.compute(early)
+                progress(early, "Prices loaded · fetching news, fundamentals & catalysts…")
+            f_news.result()
+            snap.profiles = f_prof.result()
+            if f_trials:
+                f_trials.result()
+        self.load_calendar(snap)
+        self.compute(snap)
+        if progress:
+            progress(replace(snap), "Data loaded · building trade ideas…")
+        self.make_ideas(snap, use_claude=use_claude)
+        return snap
+
+    # ── last-session cache: show something instantly on launch ───────
+    SNAPSHOT_SCHEMA = 2
+
+    @property
+    def _snapshot_path(self):
+        return self.cfg.home / "last_session.pkl"
+
+    def save_snapshot(self, snap: Snapshot) -> None:
+        if self.cfg.demo:
+            return
+        try:
+            tmp = self._snapshot_path.with_suffix(".tmp")
+            tmp.write_bytes(pickle.dumps((self.SNAPSHOT_SCHEMA, __version__, snap), protocol=pickle.HIGHEST_PROTOCOL))
+            tmp.replace(self._snapshot_path)
+        except Exception as exc:  # never let caching break the app
+            log.debug("snapshot save failed: %s", exc)
+
+    def load_snapshot(self, max_age_hours: float = 96) -> Snapshot | None:
+        if self.cfg.demo:
+            return None
+        p = self._snapshot_path
+        try:
+            if not p.exists() or time.time() - p.stat().st_mtime > max_age_hours * 3600:
+                return None
+            schema, version, snap = pickle.loads(p.read_bytes())
+            if schema != self.SNAPSHOT_SCHEMA or version != __version__ or not isinstance(snap, Snapshot):
+                return None
+            return snap
+        except Exception as exc:
+            log.debug("snapshot load failed: %s", exc)
+            return None
 
     def full(self, ideas: bool = True, use_claude: bool = True) -> Snapshot:
         snap = self.new_snapshot()

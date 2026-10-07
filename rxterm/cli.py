@@ -159,6 +159,19 @@ def cmd_selftest(args) -> int:
                 await pilot.pause(0.3)
             for what in ("mode", "ma", "vol"):
                 app.action_chart(what)
+            # mouse actions (the same handlers the on-screen buttons call)
+            app.action_mon_filter("SMID")
+            app.action_open("LLY")
+            app.action_watch_toggle()
+            app.action_browse("next")
+            app.action_compare_current()
+            app.action_comp_add("SPY")
+            app.action_comp_remove("SPY")
+            app.action_fn("OMON")
+            await pilot.pause(1.0)
+            app.action_omon_step("later")
+            app.action_fn("W")
+            await pilot.pause(0.3)
             await pilot.pause(0.3)
             assert app.alerts.alerts and app.alerts.alerts[0].triggered, "alerts"
             assert app.query_one("#des-chart").df is not None, "chart"

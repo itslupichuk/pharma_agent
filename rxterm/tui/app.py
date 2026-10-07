@@ -25,6 +25,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.suggester import SuggestFromList
+from textual.markup import escape
 from textual.widgets import ContentSwitcher, DataTable, Input, OptionList, Static
 from textual.widgets.option_list import Option
 
@@ -38,7 +39,8 @@ from ..data.news import for_ticker
 from ..engine import Engine, Snapshot
 from . import fmt
 from .fmt import AMBER, BLUE, DIM, DN, UP, WHITE
-from .widgets import Clock, PriceChart, TickerTape
+from .dialogs import AlertDialog, TickerPicker
+from .widgets import ClickTable, Clock, PriceChart, TickerTape
 
 FUNCTIONS = ("MON", "NEWS", "SCRN", "IDEAS", "CAL", "DES", "OMON", "W", "HELP", "COMP")
 FKEYS = [("F1", "HELP"), ("F2", "MON"), ("F3", "NEWS"), ("F4", "SCRN"), ("F5", "IDEAS"), ("F6", "CAL"),
@@ -71,6 +73,24 @@ CONTEXT_HELP = {
     "HELP": "F1-F10 functions · / or Esc command line · ↑↓ in command line = history · → accepts suggestion",
 }
 NY = ZoneInfo("America/New_York")
+NAV = [("◀ BACK", "app.back", None), ("MONITOR", "app.fn('MON')", "MON"), ("TRADES", "app.fn('IDEAS')", "IDEAS"),
+       ("STOCK", "app.fn('DES')", "DES"), ("CHART COMPARE", "app.fn('COMP')", "COMP"),
+       ("OPTIONS", "app.fn('OMON')", "OMON"), ("SCREENER", "app.fn('SCRN')", "SCRN"),
+       ("CALENDAR", "app.fn('CAL')", "CAL"), ("NEWS", "app.fn('NEWS')", "NEWS"), ("WATCHLIST", "app.fn('W')", "W"),
+       ("HELP", "app.fn('HELP')", "HELP"), ("🔍 FIND STOCK", "app.find", None), ("⟳ REFRESH", "app.refresh_data", None)]
+MON_FILTER_LABELS = {"ALL": "ALL", "BIG": "BIG PHARMA", "LARGE": "LARGE-CAP BIO", "SMID": "SMID BIO",
+                     "SPEC": "SPECIALTY", "W": "★ WATCHLIST"}
+
+
+def btn(label: str, action: str, active: bool = False, kind: str = "") -> str:
+    """Clickable button as Textual markup."""
+    style = {"go": "bold #000000 on #2bd576", "warn": "bold #000000 on #ff9e1b", "del": "bold #ffffff on #8b1d22"}.get(
+        kind, "bold #000000 on #ff9e1b" if active else "#e6edf3 on #262c36")
+    return f"[{style} @click={action}] {escape(label)} [/]"
+
+
+def hint(text: str) -> str:
+    return f"[#6e7681]{escape(text)}[/]"
 
 
 def _short(name: str, n: int = 18) -> str:
@@ -178,6 +198,8 @@ class RxTerm(App):
 
     def on_unmount(self) -> None:
         self.save_state()
+        if self.snap.ideas and not getattr(self, "_from_cache", False):
+            self.engine.save_snapshot(self.snap)
 
     # ── layout ─────────────────────────────────────────────────────────
     def _suggestions(self) -> list[str]:
@@ -191,71 +213,72 @@ class RxTerm(App):
     def compose(self) -> ComposeResult:
         with Horizontal(id="topbar"):
             yield Static(Text("RXTERM", style=f"bold {AMBER}"), id="logo")
-            yield Input(placeholder="Enter command  e.g.  LLY <GO>  ·  LLY 5D  ·  SCRN PDUFA  ·  COMP LLY NVO  ·  HELP",
+            yield Input(placeholder="🔍 Type a ticker or company (optional — everything below is clickable)",
                         id="cmd", suggester=SuggestFromList(self._suggestions(), case_sensitive=False))
             yield Clock(self.cfg.tz, id="clock")
         yield TickerTape(id="tape")
-        yield Static(self._fkeys_text(), id="fkeys")
+        yield Static(self._nav(), id="fkeys")
         with ContentSwitcher(initial="MON", id="main"):
             with Horizontal(id="MON"):
                 with Vertical(id="mon-left"):
-                    yield DataTable(id="mon-table", cursor_type="row", zebra_stripes=True)
+                    yield Static(id="mon-bar")
+                    yield ClickTable(id="mon-table", cursor_type="row", zebra_stripes=True)
                 with Vertical(id="mon-right"):
                     yield Static(id="mon-bench", classes="panel")
                     yield Static(id="mon-sector", classes="panel")
-                    yield DataTable(id="mon-news", cursor_type="row", show_header=False, classes="panel")
+                    yield ClickTable(id="mon-news", cursor_type="row", show_header=False, classes="panel")
                     yield Static(id="mon-ideas", classes="panel")
             with Vertical(id="NEWS"):
                 yield DataTable(id="news-table", cursor_type="row", zebra_stripes=True)
+                yield Static(id="news-actions")
                 yield Static(id="news-preview", classes="panel")
             with Horizontal(id="SCRN"):
                 yield OptionList(*[Option(f"{s.code:<11}{s.title}", id=s.code) for s in screener.SCREENS.values()],
                                  id="scrn-list")
                 with Vertical(id="scrn-right"):
                     yield Static(id="scrn-title", classes="panel")
-                    yield DataTable(id="scrn-table", cursor_type="row", zebra_stripes=True)
+                    yield ClickTable(id="scrn-table", cursor_type="row", zebra_stripes=True)
             with Vertical(id="IDEAS"):
                 yield Static(id="ideas-take", classes="panel")
+                yield Static(id="ideas-bar")
                 with Horizontal(id="ideas-cols"):
                     yield VerticalScroll(Static(id="ideas-cons"), id="ideas-cons-wrap")
                     yield VerticalScroll(Static(id="ideas-aggr"), id="ideas-aggr-wrap")
             with Vertical(id="CAL"):
                 yield Static(id="cal-title", classes="panel")
-                yield DataTable(id="cal-table", cursor_type="row", zebra_stripes=True)
+                yield ClickTable(id="cal-table", cursor_type="row", zebra_stripes=True)
             with Vertical(id="DES"):
                 yield Static(id="des-head", classes="panel")
+                yield Static(id="des-actions")
                 with Horizontal(id="des-body"):
                     with Vertical(id="des-chart-wrap"):
                         yield Static(id="des-tf")
                         yield PriceChart(id="des-chart")
                     yield Static(id="des-stats", classes="panel")
                 with Horizontal(id="des-bottom"):
-                    yield DataTable(id="des-news", cursor_type="row", show_header=False)
+                    yield ClickTable(id="des-news", cursor_type="row", show_header=False)
                     yield Static(id="des-about", classes="panel")
             with Vertical(id="COMP"):
                 yield Static(id="comp-tf")
+                yield Static(id="comp-bar")
                 yield PriceChart(id="comp-chart")
             with Horizontal(id="OMON"):
                 yield OptionList(id="omon-exp")
                 with Vertical(id="omon-right"):
                     yield Static(id="omon-head", classes="panel")
+                    yield Static(id="omon-actions")
                     yield DataTable(id="omon-table", cursor_type="row", zebra_stripes=True)
             with Vertical(id="W"):
                 yield Static(id="w-title", classes="panel")
-                yield DataTable(id="w-table", cursor_type="row", zebra_stripes=True)
+                yield Static(id="w-bar")
+                yield ClickTable(id="w-table", cursor_type="row", zebra_stripes=True)
                 yield Static(id="w-alerts", classes="panel")
             yield VerticalScroll(Static(id="help-text"), id="HELP")
         yield Static(id="status")
 
-    def _fkeys_text(self) -> Text:
-        t = Text()
-        for k, name in FKEYS:
-            active = name == getattr(self, "current", "MON")
-            t.append(f" {k} ", style="bold black on #ff9e1b")
-            t.append(f" {name} ", style=f"bold {AMBER} on #1c2128" if active else f"{WHITE}")
-            t.append(" ")
-        t.append("  / command · ? keys · ⌫ back · CTRL+Q quit", style=DIM)
-        return t
+    def _nav(self) -> str:
+        cur = getattr(self, "current", "MON")
+        return " ".join(btn(label, act, active=(scr == cur)) for label, act, scr in NAV)
 
     def on_mount(self) -> None:
         self._setup_tables()
@@ -263,9 +286,17 @@ class RxTerm(App):
         chart = self.query_one("#des-chart", PriceChart)
         chart.mode, chart.ma, chart.volume = self.chart_mode, self.chart_ma, self.chart_vol
         self.query_one("#main", ContentSwitcher).current = self.current
-        self.query_one("#fkeys", Static).update(self._fkeys_text())
-        self.query_one("#cmd", Input).focus()
-        self.status("Loading prices…", busy=True)
+        self.query_one("#fkeys", Static).update(self._nav())
+        self.query_one("#mon-table").focus()
+        cached = self.engine.load_snapshot()
+        self._from_cache = cached is not None
+        if cached is not None:
+            self._apply(cached, None)
+            self.status(f"Showing your last session ({cached.generated_at:%a %H:%M}) · refreshing live data in the "
+                        "background…", busy=True)
+        else:
+            self.status("Loading live data (first launch takes ~15 seconds; after that RXTERM opens instantly)…",
+                        busy=True)
         self.load_data()
         self.set_interval(60, self.tick)
 
@@ -283,19 +314,18 @@ class RxTerm(App):
     # ── data loading ───────────────────────────────────────────────────
     @work(thread=True, exclusive=True, group="load")
     def load_data(self) -> None:
-        snap = self.engine.new_snapshot()
+        quiet = bool(getattr(self, "_from_cache", False)) and not self.snap.board.empty
+
+        def progress(snap: Snapshot, msg: str) -> None:
+            if quiet:  # keep showing the last session (with its trade ideas) until everything is fresh
+                self.call_from_thread(self.status, msg, True)
+            else:
+                self.call_from_thread(self._apply, snap, msg)
+
         try:
-            self.engine.load_prices(snap)
-            self.engine.compute(snap)
-            self.call_from_thread(self._apply, snap, "Prices loaded · fetching news…")
-            self.engine.load_news(snap)
-            self.engine.compute(snap)
-            self.call_from_thread(self._apply, snap, "News loaded · fetching fundamentals & catalysts…")
-            self.engine.load_profiles(snap)
-            self.engine.load_calendar(snap)
-            self.engine.compute(snap)
-            self.call_from_thread(self._apply, snap, "Fundamentals loaded · building trade ideas…")
-            self.engine.make_ideas(snap)
+            snap = self.engine.load_all(progress=progress)
+            self.engine.save_snapshot(snap)
+            self._from_cache = False
             self.call_from_thread(self._apply, snap, None)
         except Exception as exc:  # keep the terminal alive on network failures
             self.call_from_thread(self.status, f"Data error: {exc}", False, True)
@@ -458,7 +488,7 @@ class RxTerm(App):
         if not refresh_only:
             self.current = name
             self.query_one("#main", ContentSwitcher).current = name
-            self.query_one("#fkeys", Static).update(self._fkeys_text())
+            self.query_one("#fkeys", Static).update(self._nav())
         render = {
             "MON": self.render_mon, "NEWS": lambda: self.render_news(news_filter if not refresh_only else None),
             "SCRN": self.render_scrn, "IDEAS": self.render_ideas, "CAL": self.render_cal,
@@ -489,7 +519,7 @@ class RxTerm(App):
                 self.ticker, self.current = ticker, screen
                 self._view = (screen, ticker)
                 self.query_one("#main", ContentSwitcher).current = screen
-                self.query_one("#fkeys", Static).update(self._fkeys_text())
+                self.query_one("#fkeys", Static).update(self._nav())
                 self.show(screen, refresh_only=True)
                 self.save_state()
                 return
@@ -507,7 +537,10 @@ class RxTerm(App):
                 return key.split(":")[0]
             except Exception:
                 pass
-        return self.ticker if self.current in ("DES", "OMON") else None
+        if self.current in ("DES", "OMON"):
+            return self.ticker
+        tid = {"MON": "mon-table", "SCRN": "scrn-table", "W": "w-table", "CAL": "cal-table"}.get(self.current)
+        return self._selected_in(tid) if tid else None
 
     def _browse_step(self, delta: int) -> None:
         order = self.browse or list(self._mon_frame().index)
@@ -704,7 +737,7 @@ class RxTerm(App):
             lines = [f"{i.tier[:4]} {i.direction:<8} {i.ticker:<5} {i.trade_line}" for i in self.snap.ideas]
             return self._copy("\n".join(lines), f"{len(lines)} trade lines")
         if self.current == "OMON" and self._chain is not None:
-            t = self.query_one("#omon-table", DataTable)
+            t = self.query_one("#omon-table", DataTable)  # works for keyboard and the COPY button
             if t.row_count:
                 k = float(t.coordinate_to_cell_key((t.cursor_row, 0)).row_key.value)
                 ch = self._chain
@@ -760,9 +793,13 @@ class RxTerm(App):
                       fmt.rsi(r["rsi"]), fmt.pct(r["rv20"], 0, plus=False), fmt.num(r["vol_ratio"], 1),
                       fmt.signal(r["signal"]),
                       Text(r["spark"], style=UP if r["chg3m"] >= 0 else DN), key=tk)
+        self.query_one("#mon-bar", Static).update(
+            "SHOW " + " ".join(btn(lbl, f"app.mon_filter('{k}')", active=(k == self.mon_filter))
+                               for k, lbl in MON_FILTER_LABELS.items())
+            + "   " + hint("click a stock to open it · click a column title to sort"))
         label = next((h for h, f in MON_COLUMNS if f == self.mon_sort), self.mon_sort.upper())
-        t.border_title = (f"SECTOR MONITOR · {len(eq)} names · {self.mon_filter} · sort {label} "
-                          f"{'▼' if self.mon_desc else '▲'}  (s sort · f filter · click headers)")
+        t.border_title = (f"SECTOR MONITOR · {len(eq)} names · {MON_FILTER_LABELS[self.mon_filter]} · "
+                          f"sorted by {label} {'▼' if self.mon_desc else '▲'}")
         if keep is not None and keep < t.row_count:
             t.move_cursor(row=keep)
 
@@ -811,16 +848,16 @@ class RxTerm(App):
                        Text(it.title[:120], style=WHITE), key=f"n{n}")
         nt.border_title = f"TOP NEWS · {len(self.snap.news)} items"
 
-        ideas = Text()
+        lines = []
         for i in self.snap.ideas:
-            ideas.append(f"{'CONS' if i.tier == CONSERVATIVE else 'AGGR'} ", style=BLUE if i.tier == CONSERVATIVE else AMBER)
-            ideas.append_text(fmt.direction(i.direction))
-            ideas.append(f" {i.ticker:<5} ", style=f"bold {WHITE}")
-            ideas.append(f"{i.structure:<17}", style=DIM)
-            ideas.append(f"{'●' * i.conviction}{'○' * (5 - i.conviction)}\n", style=AMBER)
+            tier = f"[{BLUE}]CONS[/]" if i.tier == CONSERVATIVE else f"[{AMBER}]AGGR[/]"
+            dcol = {"LONG": "#000000 on #2bd576", "SHORT": "#ffffff on #ff4d4f"}.get(i.direction, "#000000 on #b38cff")
+            lines.append(f"{tier} [bold {dcol}] {i.direction} [/] "
+                         + btn(f"{i.ticker:<5}", f"app.open('{i.ticker}')")
+                         + f" [#7d8590]{escape(i.structure):<17}[/] [{AMBER}]{'●' * i.conviction}{'○' * (5 - i.conviction)}[/]")
         w = self.query_one("#mon-ideas", Static)
-        w.update(ideas if self.snap.ideas else Text("building ideas…", style=DIM))
-        w.border_title = "TODAY'S TRADES  (F5)"
+        w.update("\n".join(lines) if lines else "[#7d8590]building ideas…[/]")
+        w.border_title = "TODAY'S TRADES  (click a ticker)"
 
     # ── NEWS ───────────────────────────────────────────────────────────
     def render_news(self, ticker: str | None = None) -> None:
@@ -833,7 +870,7 @@ class RxTerm(App):
             t.add_row(Text(f"{local:%d%b %H:%M}", style=DIM), Text(it.source[:16], style=BLUE),
                       Text(" ".join(it.tickers[:3]), style=f"bold {AMBER}"), fmt.tone(it.tone),
                       Text(", ".join(it.tags[:2]), style=WHITE), Text(it.title, style=WHITE), key=f"x{n}")
-        t.border_title = f"NEWS WIRE{' · ' + ticker if ticker else ''} · {len(items)} stories  (⏎ or o: open story)"
+        t.border_title = f"NEWS WIRE{' · ' + ticker if ticker else ''} · {len(items)} stories  (click a story to preview)"
         self._preview_news(0)
 
     @on(DataTable.RowHighlighted, "#news-table")
@@ -846,6 +883,9 @@ class RxTerm(App):
             w.update("")
             return
         it = self._news_view[row]
+        acts = [btn("OPEN STORY ↗", "app.open_story", kind="warn")]
+        acts += [btn(f"OPEN {tk}", f"app.open('{tk}')") for tk in it.tickers[:3]]
+        self.query_one("#news-actions", Static).update(" ".join(acts) + "   " + hint("opens in your web browser"))
         t = Text()
         t.append(it.title + "\n", style=f"bold {WHITE}")
         t.append(f"{it.source} · {it.published.astimezone(self.cfg.tz):%a %d %b %H:%M} · sentiment {it.sentiment:+.2f}"
@@ -957,7 +997,12 @@ class RxTerm(App):
     def render_ideas(self) -> None:
         take = self.query_one("#ideas-take", Static)
         take.update(Text(self.snap.market_take or "Building today's ideas…", style=WHITE))
-        take.border_title = f"THE TAKE · theses by {self.snap.writer or '…'}  (y: copy all trade lines)"
+        take.border_title = f"THE TAKE · theses by {self.snap.writer or '…'}"
+        cons = [btn(i.ticker, f"app.open('{i.ticker}')") for i in self.snap.ideas if i.tier == CONSERVATIVE]
+        aggr = [btn(i.ticker, f"app.open('{i.ticker}')") for i in self.snap.ideas if i.tier == AGGRESSIVE]
+        self.query_one("#ideas-bar", Static).update(
+            "OPEN  " + f"[{BLUE}]CONSERVATIVE[/] " + " ".join(cons) + "   " + f"[{AMBER}]AGGRESSIVE[/] " + " ".join(aggr)
+            + "     " + btn("⧉ COPY ALL TRADES", "app.copy", kind="warn"))
         for tier, wid, title in ((CONSERVATIVE, "#ideas-cons", "CONSERVATIVE · large-cap · defined risk"),
                                  (AGGRESSIVE, "#ideas-aggr", "AGGRESSIVE · SMID / catalysts · convex")):
             panels = [self._idea_panel(i) for i in self.snap.ideas if i.tier == tier]
@@ -1037,6 +1082,17 @@ class RxTerm(App):
         chart.refresh()
         self.save_state()
 
+    def _des_actions(self) -> None:
+        tk = self.ticker
+        on_w = tk in self.watch
+        idea = any(i.ticker == tk for i in self.snap.ideas)
+        parts = [btn("◀ PREV", "app.browse('prev')"), btn("NEXT ▶", "app.browse('next')"),
+                 btn("★ ON WATCHLIST — REMOVE" if on_w else "☆ ADD TO WATCHLIST", "app.watch_toggle", kind="" if on_w else "go"),
+                 btn("OPTIONS", "app.fn('OMON')"), btn(f"{tk} NEWS", "app.ticker_news"),
+                 btn("COMPARE +", "app.compare_current"), btn("🔔 SET ALERT", "app.alert"),
+                 btn("⧉ COPY TRADE" if idea else "⧉ COPY", "app.copy")]
+        self.query_one("#des-actions", Static).update(" ".join(parts))
+
     def _chart_des(self) -> None:
         tk, code = self.ticker, self.tf
         self.query_one("#des-tf", Static).update(self._tf_bar())
@@ -1093,7 +1149,8 @@ class RxTerm(App):
             head.append("   🔔 " + ", ".join(f"{a.op}{a.level:,.2f}" for a in alerts), style=AMBER)
         hw = self.query_one("#des-head", Static)
         hw.update(head)
-        hw.border_title = "DES   , . prev/next · + watch · y copy · ? keys · ⌫ back"
+        hw.border_title = "STOCK"
+        self._des_actions()
         self._chart_des()
 
         prof = self.snap.profiles.get(tk, {}) or {}
@@ -1171,8 +1228,16 @@ class RxTerm(App):
         if not self.comp:
             self.comp = [self.ticker, universe.SECTOR_BENCH]
         self.query_one("#comp-tf", Static).update(self._tf_bar("comp"))
+        self._comp_bar()
         self.query_one("#comp-chart", PriceChart).set_compare([], f"COMP · loading {' '.join(self.comp)}")
         self._fetch_comp(list(self.comp), self.tf)
+
+    def _comp_bar(self) -> None:
+        chips = [btn(f"{t} ✕", f"app.comp_remove('{t}')", active=True) for t in self.comp]
+        adds = [btn(f"+ {t}", f"app.comp_add('{t}')") for t in ("XBI", "IBB", "XPH", "SPY") if t not in self.comp]
+        self.query_one("#comp-bar", Static).update(
+            "COMPARING " + " ".join(chips) + "    ADD " + " ".join(adds) + " " + btn("+ ANY STOCK…", "app.comp_add", kind="go")
+            + "   " + hint("click ✕ to remove"))
 
     @work(thread=True, exclusive=True, group="comp")
     def _fetch_comp(self, names: list[str], code: str) -> None:
@@ -1281,9 +1346,17 @@ class RxTerm(App):
             h.append(f"implied move ±{iv * (chain.dte / 365) ** 0.5 * 100:.1f}%   ", style=WHITE)
         h.append(f"P/C vol {fl['pc_vol']:.2f}  P/C OI {fl['pc_oi']:.2f}", style=DIM)
         head.update(h)
-        head.border_title = "OPTION MONITOR   [ ] expiry · y copy contract · green volume = vol > OI · Δ = delta"
+        head.border_title = "OPTION MONITOR   green volume = volume > open interest · Δ = delta"
+        self._omon_actions()
         if atm is not None:
             t.move_cursor(row=near.index(atm))
+
+    def _omon_actions(self) -> None:
+        self.query_one("#omon-actions", Static).update(
+            " ".join([btn("◀ EARLIER EXPIRY", "app.omon_step('earlier')"), btn("LATER EXPIRY ▶", "app.omon_step('later')"),
+                      btn("⧉ COPY SELECTED STRIKE", "app.copy", kind="warn"), btn(f"◀ {self.ticker} STOCK PAGE", "app.fn('DES')"),
+                      btn("◀ PREV STOCK", "app.browse('prev')"), btn("NEXT STOCK ▶", "app.browse('next')")])
+            + "   " + hint("click an expiry on the left · click a strike row, then COPY"))
 
     # ── Watchlist ──────────────────────────────────────────────────────
     def _load_watch(self) -> list[str]:
@@ -1312,31 +1385,164 @@ class RxTerm(App):
                       fmt.pct(r["chg1d"], 2), fmt.pct(r["chg5d"]), fmt.pct(r["chg1m"]), fmt.rsi(r["rsi"]),
                       fmt.signal(r["signal"]), Text(cat, style=WHITE), Text(r["headline"][:80], style=DIM), key=tk)
         w = self.query_one("#w-title", Static)
-        w.update(Text.assemble(("WATCHLIST  ", f"bold {AMBER}"), (" ".join(self.watch) or "empty", WHITE),
-                               ("     + / − on any row · WADD TICK · WDEL TICK · click headers to sort", DIM)))
-        w.border_title = "W"
-        al = Text()
+        w.update(Text.assemble(("WATCHLIST  ", f"bold {AMBER}"), (" ".join(self.watch) or "empty", WHITE)))
+        w.border_title = "WATCHLIST"
+        self.query_one("#w-bar", Static).update(
+            " ".join([btn("+ ADD STOCK…", "app.watch_add_pick", kind="go"), btn("✕ REMOVE SELECTED", "app.watch_remove_selected"),
+                      btn("🔔 ALERT ON SELECTED…", "app.alert_selected", kind="warn")])
+            + "   " + hint("click a row to open · click a column title to sort"))
+        lines = []
         if not self.alerts.alerts:
-            al.append("No price alerts.  Set one:  ALRT LLY > 1250   ·   ALRT VKTX < 30   ·   remove: ALRTDEL LLY",
-                      style=DIM)
-        for a in self.alerts.alerts:
+            lines.append(hint("No price alerts yet. Select a stock above and click 🔔 ALERT ON SELECTED, or use "
+                              "🔔 SET ALERT on any stock page."))
+        for n, a in enumerate(self.alerts.alerts):
             px = b.loc[a.ticker, "last"] if a.ticker in b.index else float("nan")
-            al.append("🔔 " if a.armed else "✔ ", style=AMBER if a.armed else UP)
-            al.append(f"{a.describe():<26}", style=f"bold {WHITE}" if a.armed else DIM)
-            al.append(f" now {px:,.2f}" if px == px else "", style=WHITE)
-            if a.armed and px == px:
-                al.append(f"  ({(a.level / px - 1) * 100:+.1f}% away)", style=DIM)
+            line = btn("✕", f"app.alert_del({n})", kind="del") + " "
+            line += f"[{AMBER}]🔔[/] " if a.armed else f"[{UP}]✔[/] "
+            line += f"[bold {WHITE}]{escape(a.describe()):<26}[/]" if a.armed else f"[#7d8590]{escape(a.describe()):<26}[/]"
+            if px == px:
+                line += f" now {px:,.2f}"
+                if a.armed:
+                    line += f"  [#7d8590]({(a.level / px - 1) * 100:+.1f}% away)[/]"
             if a.triggered:
-                al.append(f"  triggered {a.triggered.replace('T', ' ')}", style=UP)
-            al.append("\n")
+                line += f"  [{UP}]triggered {escape(a.triggered.replace('T', ' '))}[/]"
+            lines.append(line)
         aw = self.query_one("#w-alerts", Static)
-        aw.update(al)
+        aw.update("\n".join(lines))
         aw.border_title = "PRICE ALERTS  (checked every minute while the market is open)"
+
+    # ── mouse actions ──────────────────────────────────────────────────
+    def action_open(self, ticker: str) -> None:
+        if ticker in universe.UNIVERSE:
+            self.ticker = ticker
+            self.show("DES")
+
+    def action_find(self) -> None:
+        self.push_screen(TickerPicker("Open a stock — click it"), lambda t: t and self.action_open(t))
+
+    def action_mon_filter(self, key: str) -> None:
+        if key in MON_FILTERS:
+            self.mon_filter = key
+            if self.current != "MON":
+                self.show("MON")
+            else:
+                self.render_mon()
+            self.save_state()
+
+    def action_browse(self, direction: str) -> None:
+        self._browse_step(-1 if str(direction) in ("prev", "-1") else 1)
+
+    def action_watch_toggle(self) -> None:
+        if self.ticker in self.watch:
+            self._watch_remove(self.ticker)
+        else:
+            self._watch_add(self.ticker)
+        if self.current == "DES":
+            self.render_des()
+
+    def action_watch_add_pick(self) -> None:
+        self.push_screen(TickerPicker("Add to your watchlist — click a stock", exclude=self.watch),
+                         lambda t: t and self._watch_add(t))
+
+    def _selected_in(self, table_id: str) -> str | None:
+        t = self.query_one(f"#{table_id}", DataTable)
+        if not t.row_count:
+            return None
+        try:
+            return t.coordinate_to_cell_key((t.cursor_row, 0)).row_key.value.split(":")[0]
+        except Exception:
+            return None
+
+    def action_watch_remove_selected(self) -> None:
+        tk = self._selected_in("w-table")
+        if tk:
+            self._watch_remove(tk)
+        else:
+            self.notify("Click a stock in the list first", timeout=3)
+
+    def action_alert(self, ticker: str = "") -> None:
+        tk = ticker or self.ticker
+        b = self.snap.board
+        last = float(b.loc[tk, "last"]) if tk in b.index else None
+
+        def done(res) -> None:
+            if res:
+                op, level = res
+                a = self.alerts.add(tk, level, op, last)
+                self.notify(f"Alert set: {a.describe()}", timeout=4)
+                self._check_alerts()
+                self.show(self.current, refresh_only=True)
+                self.status(f"Alert set: {a.describe()}")
+        self.push_screen(AlertDialog(tk, last), done)
+
+    def action_alert_selected(self) -> None:
+        tk = self._selected_in("w-table")
+        if tk:
+            self.action_alert(tk)
+        else:
+            self.notify("Click a stock in the list first", timeout=3)
+
+    def action_alert_del(self, index: int) -> None:
+        i = int(index)
+        if 0 <= i < len(self.alerts.alerts):
+            a = self.alerts.alerts.pop(i)
+            self.alerts.save()
+            self.notify(f"Removed alert: {a.describe()}", timeout=3)
+            self.render_watch()
+
+    def action_compare_current(self) -> None:
+        if self.comp and self.ticker not in self.comp:
+            self.comp = (self.comp + [self.ticker])[-6:]
+        elif not self.comp:
+            self.comp = [self.ticker, universe.SECTOR_BENCH]
+        self.show("COMP")
+
+    def action_comp_add(self, ticker: str = "") -> None:
+        def add(t) -> None:
+            if t and t not in self.comp:
+                self.comp = (self.comp + [t])[-6:]
+                self._load_comp()
+        if ticker:
+            add(ticker)
+        else:
+            self.push_screen(TickerPicker("Add to the comparison — click a stock", exclude=self.comp), add)
+
+    def action_comp_remove(self, ticker: str) -> None:
+        if ticker in self.comp and len(self.comp) > 1:
+            self.comp.remove(ticker)
+            self._load_comp()
+        else:
+            self.notify("Keep at least one stock on the chart", timeout=3)
+
+    def action_omon_step(self, delta: int) -> None:
+        ol = self.query_one("#omon-exp", OptionList)
+        if ol.option_count:
+            step = -1 if str(delta) in ("earlier", "-1") else 1
+            ol.highlighted = max(0, min(ol.option_count - 1, (ol.highlighted or 0) + step))
+
+    def action_copy(self) -> None:
+        self._copy_context()
+
+    def action_open_story(self) -> None:
+        self._open_news_row()
+
+    def action_ticker_news(self) -> None:
+        self.show("NEWS", news_filter=self.ticker)
 
     # ── HELP ───────────────────────────────────────────────────────────
     def _help(self) -> Text:
         t = Text()
         t.append("RXTERM — PHARMA & BIOTECH TRADING TERMINAL\n\n", style=f"bold {AMBER}")
+        t.append("MOUSE\n", style=f"bold {AMBER}")
+        for k, v in [("Tabs along the top", "Switch screens · ◀ BACK · 🔍 FIND STOCK · ⟳ REFRESH"),
+                     ("Click a stock", "Opens its page (monitor, screener, calendar, watchlist, today's trades)"),
+                     ("Click a column title", "Sort by it — click again to reverse"),
+                     ("Buttons on each screen", "Watchlist, alerts, options, news, compare, copy, prev/next stock"),
+                     ("Chart buttons", "1D … 10Y timeframes · LINE/CANDLE · MA · VOL"),
+                     ("Mouse wheel", "Scroll lists and panels")]:
+            t.append(f"  {k:<24}", style=f"bold {WHITE}")
+            t.append(v + "\n", style="#c9d1d9")
+        t.append("\nEverything below is optional — keyboard shortcuts and typed commands for speed.\n\n", style=DIM)
         sections = [
             ("COMMANDS", [
                 ("LLY ⏎", "Security page: chart, key stats, catalyst, news, RXTERM idea"),

@@ -9,12 +9,49 @@ import pandas as pd
 from rich.text import Text
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import Static
+from textual.widgets import DataTable, Static
 
 from .fmt import AMBER, BLUE, DIM, DN, UP, WHITE
 
 # Braille dot bit for (x in 0..1, y in 0..3) inside a 2×4 cell
 _BITS = ((0x01, 0x02, 0x04, 0x40), (0x08, 0x10, 0x20, 0x80))
+
+
+class ClickTable(DataTable):
+    """DataTable where a single click on a row selects it (stock DataTable needs two clicks)."""
+
+    async def _on_click(self, event) -> None:
+        meta = event.style.meta
+        before = self.cursor_coordinate
+        await super()._on_click(event)
+        row = meta.get("row", -1) if meta else -1
+        if row is not None and row >= 0 and meta.get("column", -1) >= 0 and self.cursor_coordinate != before:
+            self._post_selected_message()
+
+
+class _Rows:
+    """Accumulates (char, style) and emits run-length grouped Text — far fewer Rich spans than char-by-char."""
+
+    def __init__(self):
+        self.out = Text()
+        self._buf: list[str] = []
+        self._style = None
+
+    def put(self, ch: str, style: str = "") -> None:
+        if style != self._style and self._buf:
+            self.out.append("".join(self._buf), style=self._style or "")
+            self._buf = []
+        self._style = style
+        self._buf.append(ch)
+
+    def text(self, s: str, style: str = "") -> None:
+        self.flush()
+        self.out.append(s, style=style)
+
+    def flush(self) -> None:
+        if self._buf:
+            self.out.append("".join(self._buf), style=self._style or "")
+            self._buf = []
 
 
 class PriceChart(Widget):
@@ -150,7 +187,7 @@ class PriceChart(Widget):
         out.append(legend, style="#6e7681")
         out.append("\n")
 
-        rows: list[Text] = [Text() for _ in range(ch)]
+        rows = [_Rows() for _ in range(ch)]
         if self.mode == "candle":
             bars = self._buckets(df, cw)
             n = len(bars)
@@ -160,26 +197,28 @@ class PriceChart(Widget):
                 ma_b = ma.groupby((pd.Series(range(len(ma))) * min(cw, len(ma)) // len(ma)).values).last() if len(ma) > cw else ma
                 ma_grid, ma_owner = self._braille([(list(ma_b.values), 2)], lo, hi, cw, ch)
             row_h = (hi - lo) / ch
+            O, H, L, C = (bars[k].tolist() for k in ("Open", "High", "Low", "Close"))
             for r in range(ch):
                 top, bot = hi - r * row_h, hi - (r + 1) * row_h
                 for c in range(cw):
                     i = colmap.get(c)
                     if i is not None:
-                        o, hh, ll, cc = bars["Open"].iloc[i], bars["High"].iloc[i], bars["Low"].iloc[i], bars["Close"].iloc[i]
+                        o, hh, ll, cc = O[i], H[i], L[i], C[i]
                         col = UP if cc >= o else DN
                         b_top, b_bot = max(o, cc), min(o, cc)
                         if b_top >= bot and b_bot <= top:
-                            rows[r].append("█" if (b_top - b_bot) >= row_h * 0.5 or (b_top >= top or b_bot <= bot) else "▬", style=col)
+                            rows[r].put("█" if (b_top - b_bot) >= row_h * 0.5 or (b_top >= top or b_bot <= bot) else "▬", col)
                             continue
                         if hh >= bot and ll <= top:
-                            rows[r].append("│", style=col)
+                            rows[r].put("│", col)
                             continue
                     if ma_grid is not None and ma_grid[r][c]:
-                        rows[r].append(chr(0x2800 + ma_grid[r][c]), style=BLUE)
+                        rows[r].put(chr(0x2800 + ma_grid[r][c]), BLUE)
                     else:
-                        rows[r].append("·" if (r % 4 == 0 and c % 6 == 0) else " ", style="#30363d")
-            vol_cols = {c: bars["Volume"].iloc[i] for c, i in colmap.items()}
-            vol_up = {c: bars["Close"].iloc[i] >= bars["Open"].iloc[i] for c, i in colmap.items()}
+                        rows[r].put("·" if (r % 4 == 0 and c % 6 == 0) else " ", "#30363d")
+            V = bars["Volume"].tolist()
+            vol_cols = {c: V[i] for c, i in colmap.items()}
+            vol_up = {c: C[i] >= O[i] for c, i in colmap.items()}
         else:
             series = [(list(close.values), 1)]
             if ma is not None:
@@ -189,16 +228,18 @@ class PriceChart(Widget):
                 for c in range(cw):
                     bits = grid[r][c]
                     if bits:
-                        rows[r].append(chr(0x2800 + bits), style=line_col if owner[r][c] == 1 else BLUE)
+                        rows[r].put(chr(0x2800 + bits), line_col if owner[r][c] == 1 else BLUE)
                     else:
-                        rows[r].append("·" if (r % 4 == 0 and c % 6 == 0) else " ", style="#30363d")
+                        rows[r].put("·" if (r % 4 == 0 and c % 6 == 0) else " ", "#30363d")
             vb = self._buckets(df, cw)
             n = len(vb)
-            vol_cols = {int(i * cw / n) if n < cw else i: vb["Volume"].iloc[i] for i in range(n)}
-            vol_up = {int(i * cw / n) if n < cw else i: vb["Close"].iloc[i] >= vb["Open"].iloc[i] for i in range(n)}
+            V, C, O = vb["Volume"].tolist(), vb["Close"].tolist(), vb["Open"].tolist()
+            vol_cols = {int(i * cw / n) if n < cw else i: V[i] for i in range(n)}
+            vol_up = {int(i * cw / n) if n < cw else i: C[i] >= O[i] for i in range(n)}
 
         for r in range(ch):
-            out.append_text(rows[r])
+            rows[r].flush()
+            out.append_text(rows[r].out)
             if r % 2 == 0 or r == ch - 1:
                 out.append(f" {hi - (r + 0.5) / ch * (hi - lo):>9,.2f}", style=DIM)
             out.append("\n")
@@ -210,17 +251,17 @@ class PriceChart(Widget):
             vmax = max(vol_cols.values()) if vol_cols else 0
             levels = " ▁▂▃▄▅▆▇█"
             for r in range(vh):
-                line = Text()
+                line = _Rows()
                 for c in range(cw):
                     v = vol_cols.get(c)
                     if not v or not vmax:
-                        line.append(" ")
+                        line.put(" ", "")
                         continue
                     units = v / vmax * vh * 8
                     fill = units - (vh - 1 - r) * 8
-                    ch_ = levels[int(max(0, min(8, fill)))]
-                    line.append(ch_, style=(UP if vol_up.get(c) else DN) + " dim")
-                out.append_text(line)
+                    line.put(levels[int(max(0, min(8, fill)))], (UP if vol_up.get(c) else DN) + " dim")
+                line.flush()
+                out.append_text(line.out)
                 if r == 0:
                     out.append(f" {vmax / 1e6:>8,.1f}M" if vmax >= 1e6 else f" {vmax:>9,.0f}", style=DIM)
                 out.append("\n")
@@ -258,14 +299,16 @@ class PriceChart(Widget):
             out.append(f"{s.iloc[-1]:+.1f}%   ", style=UP if s.iloc[-1] >= 0 else DN)
         out.append("\n")
         for r in range(ch):
+            row = _Rows()
             for c in range(cw):
                 bits = grid[r][c]
                 o = owner[r][c]
                 if bits:
-                    col = "#30363d" if o == 99 else self.COMPARE_COLORS[(o - 1) % len(self.COMPARE_COLORS)]
-                    out.append(chr(0x2800 + bits), style=col)
+                    row.put(chr(0x2800 + bits), "#30363d" if o == 99 else self.COMPARE_COLORS[(o - 1) % len(self.COMPARE_COLORS)])
                 else:
-                    out.append(" ")
+                    row.put(" ", "")
+            row.flush()
+            out.append_text(row.out)
             if r % 2 == 0 or r == ch - 1:
                 out.append(f" {hi - (r + 0.5) / ch * (hi - lo):>+7.1f}%", style=DIM)
             out.append("\n")
@@ -274,38 +317,39 @@ class PriceChart(Widget):
 
 
 class TickerTape(Static):
-    """Continuously scrolling quote tape."""
-
-    offset: reactive[int] = reactive(0)
+    """Scrolling quote tape. Precomputed and stepped at 4 Hz so it costs almost nothing."""
 
     def __init__(self, **kw):
         super().__init__("", **kw)
-        self._text = Text(" RXTERM · loading market data… ", style=AMBER)
+        self._base = Text(" RXTERM · loading market data… ", style=AMBER)
+        self._loop = self._base
+        self._offset = 0
 
     def on_mount(self) -> None:
-        self.set_interval(0.12, self._tick)
+        self.set_interval(0.25, self._tick)
 
     def set_quotes(self, quotes: list[tuple[str, float, float]]) -> None:
         t = Text()
         for tick, last, chg in quotes:
             t.append(f" {tick} ", style=f"bold {AMBER}")
             t.append(f"{last:,.2f} ", style=WHITE)
-            arrow = "▲" if chg >= 0 else "▼"
-            t.append(f"{arrow}{abs(chg) * 100:.2f}%", style=UP if chg >= 0 else DN)
+            t.append(f"{'▲' if chg >= 0 else '▼'}{abs(chg) * 100:.2f}%", style=UP if chg >= 0 else DN)
             t.append("  │", style="#30363d")
-        self._text = t
+        self._base = t
+        self._loop = Text().join([t] * 3)
+        self._offset %= max(len(t.plain), 1)
 
     def _tick(self) -> None:
-        self.offset = (self.offset + 1) % max(len(self._text.plain), 1)
+        n = len(self._base.plain)
+        if n:
+            self._offset = (self._offset + 2) % n
+            self.refresh()
 
     def render(self) -> Text:
         w = self.size.width or 120
-        base = self._text
-        if len(base.plain) == 0:
-            return base
-        reps = (w // max(len(base.plain), 1)) + 2
-        full = Text().join([base] * reps)
-        return full[self.offset:self.offset + w]
+        if len(self._loop.plain) < self._offset + w:
+            self._loop = Text().join([self._base] * (w // max(len(self._base.plain), 1) + 3))
+        return self._loop[self._offset:self._offset + w]
 
 
 class Clock(Static):

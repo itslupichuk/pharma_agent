@@ -165,7 +165,7 @@ class YahooMarketData:
 
     def profiles(self, tickers: Iterable[str]) -> dict[str, dict]:
         tickers = list(tickers)
-        with ThreadPoolExecutor(max_workers=8) as pool:
+        with ThreadPoolExecutor(max_workers=12) as pool:
             results = list(pool.map(self.profile, tickers))
         return dict(zip(tickers, results))
 

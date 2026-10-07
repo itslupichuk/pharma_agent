@@ -242,7 +242,7 @@ class NewsWire:
     def _get(self, url: str) -> bytes | None:
         try:
             r = httpx.get(url, headers={"User-Agent": UA, "Accept": "application/rss+xml, application/xml, text/xml, */*"},
-                          timeout=12, follow_redirects=True)
+                          timeout=8, follow_redirects=True)
             return r.content if r.status_code == 200 else None
         except httpx.HTTPError as exc:
             log.debug("feed %s failed: %s", url, exc)
