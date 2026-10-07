@@ -91,3 +91,40 @@ def send_email(cfg: Settings, subject: str, html: str, text: str, to: str | None
         report += "\nLikely cause:\n  " + "\n  ".join(hints)
     print(report, file=sys.stderr)
     raise EmailSendFailed(report)
+
+
+def probe(cfg: Settings) -> list[str]:
+    """Step through the SMTP handshake and report each server reply (never the credentials)."""
+    user = (cfg.smtp_user or "").strip()
+    password = _clean_secret(cfg.smtp_password)
+    out = [f"user: {user[:2]}…@{user.split('@')[-1] if '@' in user else '?'} ({len(user)} chars) · "
+           f"password: {len(password)} chars, ascii={password.isascii()}, alnum={password.isalnum()}"]
+    for port in (587, 465):
+        try:
+            if port == 465:
+                s = smtplib.SMTP_SSL(cfg.smtp_host, port, context=ssl.create_default_context(), timeout=20)
+            else:
+                s = smtplib.SMTP(cfg.smtp_host, port, timeout=20)
+            code, banner = s.ehlo()
+            out.append(f"[{port}] EHLO {code}")
+            if port == 587:
+                code, resp = s.starttls(context=ssl.create_default_context())
+                out.append(f"[{port}] STARTTLS {code}")
+                s.ehlo()
+            out.append(f"[{port}] AUTH offered: {s.esmtp_features.get('auth', '').strip()}")
+            for mech, fn in (("LOGIN", s.auth_login), ("PLAIN", s.auth_plain)):
+                s.user, s.password = user, password
+                try:
+                    code, resp = s.auth(mech, fn, initial_response_ok=(mech == "PLAIN"))
+                    out.append(f"[{port}] AUTH {mech} → {code} OK")
+                    s.quit()
+                    return out
+                except smtplib.SMTPAuthenticationError as exc:
+                    msg = exc.smtp_error.decode(errors="replace") if isinstance(exc.smtp_error, bytes) else str(exc.smtp_error)
+                    out.append(f"[{port}] AUTH {mech} → {exc.smtp_code} {msg.strip()[:200]}")
+                except smtplib.SMTPServerDisconnected as exc:
+                    out.append(f"[{port}] AUTH {mech} → server disconnected ({exc})")
+                    break
+        except (smtplib.SMTPException, OSError) as exc:
+            out.append(f"[{port}] {type(exc).__name__}: {exc}")
+    return out

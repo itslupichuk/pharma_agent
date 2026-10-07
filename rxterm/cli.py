@@ -115,6 +115,14 @@ def cmd_screen(args) -> int:
     return 0
 
 
+def cmd_smtp_check(args) -> int:
+    from .brief.send import probe
+
+    for line in probe(_cfg(args)):
+        print(line)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="rxterm", description="RXTERM pharma & biotech trading terminal")
     p.add_argument("--version", action="version", version=f"rxterm {__version__}")
@@ -144,6 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--list", action="store_true")
     s.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     s.set_defaults(fn=cmd_screen)
+
+    c = sub.add_parser("smtp-check", help="diagnose e-mail delivery (prints server replies, never secrets)")
+    c.set_defaults(fn=cmd_smtp_check)
 
     t = sub.add_parser("terminal", help="launch the terminal (default)")
     t.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)

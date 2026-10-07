@@ -85,6 +85,10 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: rxterm brief --out out --reuse --send
 
+      - name: Diagnose e-mail failure
+        if: failure() && steps.gate.outputs.run == 'true'
+        run: rxterm smtp-check
+
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.run == 'true'
         with:
