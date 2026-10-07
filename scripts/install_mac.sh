@@ -44,6 +44,10 @@ LAUNCH
 chmod +x "$APP_DIR/rxterm.command"
 mkdir -p "$HOME/.local/bin"
 ln -sf "$APP_DIR/rxterm.command" "$HOME/.local/bin/rxterm"
+PROFILE="$HOME/.zprofile"
+if ! grep -qs 'RXTERM: add ~/.local/bin' "$PROFILE"; then
+  printf '\n# RXTERM: add ~/.local/bin to PATH\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$PROFILE"
+fi
 
 # 4. RXTERM.app — opens a large dark Terminal window running the terminal ──
 step "Creating RXTERM.app…"
@@ -51,9 +55,22 @@ APP="$APP_DIR/RXTERM.app"
 rm -rf "$APP"
 osacompile -o "$APP" <<'APPLESCRIPT'
 on run
+	set cmd to "clear; exec \"$HOME/RXTERM/rxterm.command\""
+	set wasRunning to application "Terminal" is running
 	tell application "Terminal"
+		if wasRunning then
+			set t to do script cmd
+		else
+			-- Terminal opens its own blank window on launch: reuse it
+			launch
+			delay 0.5
+			if (count of windows) > 0 then
+				set t to do script cmd in window 1
+			else
+				set t to do script cmd
+			end if
+		end if
 		activate
-		set t to do script "clear; exec \"$HOME/RXTERM/rxterm.command\""
 		try
 			set current settings of t to settings set "Pro"
 		end try
@@ -92,6 +109,6 @@ step "Checking install…"
 
 printf "\n%s✔ RXTERM installed.%s\n\n" "$OK" "$RST"
 printf "  Double-click %sRXTERM%s on your Desktop (also in Applications / Launchpad).\n" "$AMBER" "$RST"
-printf "  Or type %srxterm%s in Terminal %s(new windows; add ~/.local/bin to PATH if needed)%s.\n" "$AMBER" "$RST" "$DIM" "$RST"
+printf "  Or type %srxterm%s in any new Terminal window.\n" "$AMBER" "$RST"
 printf "  First launch: macOS may ask to let RXTERM control Terminal — click OK.\n"
 printf "  To update later, run this installer again.\n\n"

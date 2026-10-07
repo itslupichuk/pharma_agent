@@ -22,7 +22,7 @@ from .config import settings
 
 def _cfg(args):
     cfg = settings
-    if getattr(args, "demo", False):
+    if getattr(args, "demo", False):  # subcommand flags use SUPPRESS so a global --demo survives
         cfg = replace(cfg, demo=True)
     return cfg
 
@@ -125,22 +125,22 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--writer", help="label for who wrote the --theses file")
     b.add_argument("--reuse", action="store_true", help="re-render from OUT/snapshot.pkl instead of re-fetching")
     b.add_argument("--print", action="store_true", help="print the text version to stdout")
-    b.add_argument("--demo", action="store_true")
+    b.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     b.set_defaults(fn=cmd_brief)
 
     i = sub.add_parser("ideas", help="print today's trade ideas")
     i.add_argument("--no-claude", action="store_true")
-    i.add_argument("--demo", action="store_true")
+    i.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     i.set_defaults(fn=cmd_ideas)
 
     s = sub.add_parser("screen", help="run a preset screen")
     s.add_argument("code", nargs="?")
     s.add_argument("--list", action="store_true")
-    s.add_argument("--demo", action="store_true")
+    s.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     s.set_defaults(fn=cmd_screen)
 
     t = sub.add_parser("terminal", help="launch the terminal (default)")
-    t.add_argument("--demo", action="store_true")
+    t.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     t.set_defaults(fn=cmd_terminal)
 
     args = p.parse_args(argv)

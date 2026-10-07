@@ -21,17 +21,25 @@ A Bloomberg-style terminal and 8:15 AM morning brief for trading pharma and biot
 | **Theses** | Written by Claude when `ANTHROPIC_API_KEY` is set (or by the scheduled Claude routine). Otherwise a built-in rules-based analyst writer is used |
 | **Morning brief** | HTML e-mail in a sell-side note format: the take, trades, top stories with so-whats, catalyst calendar, movers, screens, segment performance |
 
-## Install (Mac)
+## Install: one line, with a Desktop icon
+
+**Mac.** Open Terminal (⌘ Space, type *Terminal*), paste this and press Enter:
 
 ```bash
-git clone https://github.com/itslupichuk/pharma_agent && cd pharma_agent
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
-cp .env.example .env          # optional: ANTHROPIC_API_KEY for Claude-written theses
-rxterm                        # launch the terminal
+curl -fsSL https://raw.githubusercontent.com/itslupichuk/pharma_agent/HEAD/scripts/install_mac.sh | bash
 ```
 
-Use a dark terminal at least 160×45 (iTerm2, Ghostty, WezTerm or Terminal.app). `rxterm --demo` runs offline on synthetic data.
+**Windows.** Open PowerShell, paste this and press Enter:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/itslupichuk/pharma_agent/HEAD/scripts/install_windows.ps1 | iex"
+```
+
+The installer downloads RXTERM to `~/RXTERM` and sets up its own Python 3.12 (via [uv](https://docs.astral.sh/uv/), so it doesn't touch your system Python). It then puts an **RXTERM** icon on your Desktop, in Applications/Launchpad (or the Start menu), and adds an `rxterm` command. Double-click the icon to open the terminal in a large dark window. Run the same line again any time to update; your watchlist and settings are kept.
+
+The first time you launch on a Mac, it may ask to let RXTERM control Terminal. Click **OK**.
+
+Manual install for developers: `git clone`, then `pip install -e .`, then `rxterm`. Add `--demo` to run offline on synthetic data.
 
 ## Terminal commands
 
