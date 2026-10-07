@@ -20,7 +20,9 @@ curl -fsSL "https://codeload.github.com/$REPO/zip/HEAD" -o "$TMP/rxterm.zip"
 unzip -q "$TMP/rxterm.zip" -d "$TMP"
 SRC="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -1)"
 mkdir -p "$APP_DIR"
-rsync -a --delete --exclude ".venv" --exclude ".env" --exclude "out" "$SRC/" "$APP_DIR/"
+# replace the code, keep the virtualenv, your .env and outputs
+find "$APP_DIR" -mindepth 1 -maxdepth 1 ! -name ".venv" ! -name ".env" ! -name "out" -exec rm -rf {} +
+cp -R "$SRC/." "$APP_DIR/"
 
 # 2. Python environment (uv brings its own Python 3.12 — nothing to install system-wide) ──
 if ! command -v uv >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/uv" ]; then
