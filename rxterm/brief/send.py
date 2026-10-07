@@ -36,6 +36,10 @@ def _diagnose(user: str, password: str, host: str) -> list[str]:
         notes.append(f"RXTERM_SMTP_PASSWORD is {len(password)} characters after removing spaces; "
                      "Gmail App Passwords are exactly 16 letters. Create one at https://myaccount.google.com/apppasswords "
                      "(your normal Google password will not work).")
+    elif "gmail" in host and not password.isalpha():
+        notes.append("RXTERM_SMTP_PASSWORD contains digits or symbols; Gmail App Passwords are 16 letters only, "
+                     "so this looks like your regular Google password. Create an App Password at "
+                     "https://myaccount.google.com/apppasswords and paste that instead.")
     if not password.isascii():
         notes.append("RXTERM_SMTP_PASSWORD contains non-ASCII characters — re-type it rather than copy/paste.")
     return notes
