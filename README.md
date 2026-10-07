@@ -29,11 +29,13 @@ A Bloomberg-style terminal and 8:15 AM morning brief for trading pharma and biot
 curl -fsSL https://raw.githubusercontent.com/itslupichuk/pharma_agent/HEAD/scripts/install_mac.sh | bash
 ```
 
-**Windows.** Open PowerShell, paste this and press Enter:
+**Windows.** Press Start, type *PowerShell*, open it, paste this and press Enter:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/itslupichuk/pharma_agent/HEAD/scripts/install_windows.ps1 | iex"
+irm https://raw.githubusercontent.com/itslupichuk/pharma_agent/HEAD/scripts/install_windows.ps1 | iex
 ```
+
+For the best look, use Windows Terminal (preinstalled on Windows 11, free in the Microsoft Store on Windows 10). The shortcut opens in it automatically.
 
 The installer downloads RXTERM to `~/RXTERM` and sets up its own Python 3.12 (via [uv](https://docs.astral.sh/uv/), so it doesn't touch your system Python). It then puts an **RXTERM** icon on your Desktop, in Applications/Launchpad (or the Start menu), and adds an `rxterm` command. Double-click the icon to open the terminal in a large dark window. Run the same line again any time to update; your watchlist and settings are kept.
 
