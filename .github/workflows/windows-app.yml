@@ -1,0 +1,99 @@
+# Builds the RXTERM Windows app (RXTERM-Setup.exe + portable zip), tests it on Windows,
+# and publishes it as the latest GitHub Release:
+#   https://github.com/itslupichuk/pharma_agent/releases/latest/download/RXTERM-Setup.exe
+name: windows-app
+
+on:
+  push:
+    branches: [claude/pharma-trading-agent-xt73p4]
+    paths:
+      - "rxterm/**"
+      - "packaging/**"
+      - "config/**"
+      - "assets/**"
+      - "docs/USER_GUIDE.md"
+      - "pyproject.toml"
+      - ".github/workflows/windows-app.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-app
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: "1"
+      RXTERM_NO_WT: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pyinstaller
+
+      - name: Test (source)
+        run: rxterm selftest
+
+      - name: Build app (PyInstaller)
+        run: pyinstaller packaging/rxterm.spec --noconfirm
+
+      - name: Test (packaged app)
+        shell: pwsh
+        run: |
+          $exe = "dist\RXTERM\RXTERM.exe"
+          & $exe --version; if ($LASTEXITCODE) { exit 1 }
+          & $exe selftest; if ($LASTEXITCODE) { exit 1 }
+          & $exe screen --list | Select-Object -First 3
+          & $exe --demo ideas | Select-Object -First 12
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          $version = "1.0.${{ github.run_number }}"
+          & $iscc "/DAppVersion=$version" packaging\rxterm.iss
+          if ($LASTEXITCODE) { exit 1 }
+          Compress-Archive -Path dist\RXTERM -DestinationPath dist\RXTERM-portable.zip -Force
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-ChildItem dist | Format-Table Name, Length
+
+      - name: Test installer (silent install + run)
+        shell: pwsh
+        run: |
+          Start-Process dist\RXTERM-Setup.exe -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/TASKS=desktopicon" -Wait
+          $app = "$env:LOCALAPPDATA\Programs\RXTERM\RXTERM.exe"
+          if (-not (Test-Path $app)) { throw "installer did not place RXTERM.exe" }
+          $lnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "RXTERM.lnk"
+          if (-not (Test-Path $lnk)) { throw "no Desktop shortcut" }
+          & $app selftest; if ($LASTEXITCODE) { exit 1 }
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}
+          name: RXTERM ${{ env.APP_VERSION }} for Windows
+          make_latest: "true"
+          body: |
+            **Install:** download **RXTERM-Setup.exe**, double-click it, click Install. RXTERM appears on your Desktop and in the Start menu.
+
+            Windows may say *"Windows protected your PC"* because the app isn't code-signed: click **More info → Run anyway**.
+
+            No-install option: download **RXTERM-portable.zip**, extract it, double-click `RXTERM\RXTERM.exe`.
+
+            Built from ${{ github.sha }}.
+          files: |
+            dist/RXTERM-Setup.exe
+            dist/RXTERM-portable.zip

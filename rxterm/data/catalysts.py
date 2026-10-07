@@ -10,6 +10,7 @@ Sources, merged and de-duplicated:
 from __future__ import annotations
 
 import logging
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -26,6 +27,8 @@ from .news import NewsItem
 log = logging.getLogger(__name__)
 
 REPO_CATALYSTS = Path(__file__).resolve().parents[2] / "config" / "catalysts.yaml"
+if not REPO_CATALYSTS.exists() and getattr(sys, "frozen", False):  # PyInstaller bundle
+    REPO_CATALYSTS = Path(getattr(sys, "_MEIPASS", ".")) / "config" / "catalysts.yaml"
 CTGOV = "https://clinicaltrials.gov/api/v2/studies"
 CTGOV_TTL = 24 * 3600
 

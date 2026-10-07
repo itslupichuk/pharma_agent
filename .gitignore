@@ -8,3 +8,5 @@ out/
 .pytest_cache/
 *.db
 .DS_Store
+dist/
+build/

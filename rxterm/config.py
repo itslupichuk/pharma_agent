@@ -9,7 +9,9 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # ./.env (source checkout / installer layout)
+# per-user settings for the packaged Windows/Mac app: %USERPROFILE%\.rxterm\.env
+load_dotenv(Path(os.getenv("RXTERM_HOME", "~/.rxterm")).expanduser() / ".env")
 
 
 def _flag(name: str, default: bool = False) -> bool:

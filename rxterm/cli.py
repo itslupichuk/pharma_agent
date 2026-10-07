@@ -123,6 +123,44 @@ def cmd_smtp_check(args) -> int:
     return 0
 
 
+def cmd_selftest(args) -> int:
+    """End-to-end check used by the app build: engine, screens, brief rendering and the TUI (headless)."""
+    import asyncio
+    import tempfile
+
+    from .analytics import screener
+    from .brief import render
+    from .engine import Engine
+    from .tui.app import RxTerm
+
+    cfg = replace(settings, demo=True, home=Path(tempfile.mkdtemp()), anthropic_api_key="")
+    snap = Engine(cfg).full()
+    assert len(snap.board) > 50 and len(snap.ideas) == 6, "engine"
+    for code in screener.SCREENS:
+        screener.run(snap.board, code)
+    out = render.write_outputs(snap, Path(tempfile.mkdtemp()))
+    assert out["html"].stat().st_size > 10_000, "brief"
+    from .data.catalysts import REPO_CATALYSTS, load_yaml
+    assert load_yaml(REPO_CATALYSTS), f"catalysts file missing at {REPO_CATALYSTS}"
+
+    async def tui() -> int:
+        app = RxTerm(cfg)
+        async with app.run_test(size=(200, 56)) as pilot:
+            for _ in range(80):
+                await pilot.pause(0.25)
+                if app.snap.ideas:
+                    break
+            for cmd in ("LLY", "IDEAS", "SCRN PDUFA", "NEWS", "CAL", "LLY OMON", "W", "HELP", "MON"):
+                app.run_command(cmd)
+                await pilot.pause(0.3)
+            return len(app.snap.ideas)
+
+    n = asyncio.run(tui())
+    assert n == 6, "tui"
+    print(f"RXTERM selftest OK · {len(snap.board)} securities · {n} ideas · catalysts {REPO_CATALYSTS}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="rxterm", description="RXTERM pharma & biotech trading terminal")
     p.add_argument("--version", action="version", version=f"rxterm {__version__}")
@@ -152,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--list", action="store_true")
     s.add_argument("--demo", action="store_true", default=argparse.SUPPRESS)
     s.set_defaults(fn=cmd_screen)
+
+    st = sub.add_parser("selftest")
+    st.set_defaults(fn=cmd_selftest)
 
     c = sub.add_parser("smtp-check", help="diagnose e-mail delivery (prints server replies, never secrets)")
     c.set_defaults(fn=cmd_smtp_check)
