@@ -68,9 +68,9 @@ jobs:
           $log
           if ($p.HasExited) { throw "RXTERM.exe exited early (code $($p.ExitCode))" }
           if ($log -notmatch "RXTERM window at") { throw "window service did not start" }
-          if ($log -match "pywebview failed|pywebview unavailable") { Write-Warning "native window failed; app used the Edge fallback" }
           $w = Get-Process -Id $p.Id
-          "Main window title: '$($w.MainWindowTitle)'"
+          if ($log -match "pywebview failed|pywebview unavailable") { "::warning::Native window failed; RXTERM used the Edge app-window fallback" }
+          else { "::notice::Native RXTERM window opened: '$($w.MainWindowTitle)'" }
           Stop-Process -Id $p.Id -Force
 
       - name: Build installer (Inno Setup)
