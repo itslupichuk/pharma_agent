@@ -26,6 +26,7 @@ TYPES = {".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".s
 # method name -> (callable on Backend, accepted params)
 API = {
     "status": ("status", ()), "monitor": ("monitor", ()), "tape": ("tape", ()), "stock": ("stock", ("ticker",)),
+    "stock_news": ("stock_news", ("ticker",)),
     "bars": ("bars", ("ticker", "tf")), "compare": ("compare", ("tickers", "tf")), "ideas": ("ideas", ()),
     "screens": ("screens", ()), "screen": ("screen", ("code",)), "calendar": ("calendar", ()),
     "news": ("news", ("ticker",)), "chain": ("chain", ("ticker", "expiry")), "watchlist": ("watchlist", ()),

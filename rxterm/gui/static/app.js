@@ -551,8 +551,12 @@ PAGES.stock = async (root, r, page) => {
     $("#stats").innerHTML = d.stats.map((s) => `<div>${esc(s.label)}</div><div>${fmt(s.value, s.fmt)}</div>`).join("") +
       (d.alerts.length ? `<div class="amber">Your alerts</div><div>${d.alerts.map((a) => `<div>${esc(a.text)} ${a.armed ? "" : "✓"}</div>`).join("")}</div>` : "");
     if (first) {
-      $("#snews").innerHTML = newsList(d.news);
-      $("#snews").onclick = (e) => { const x = e.target.closest("[data-i]"); if (x) newsModal(d.news[+x.dataset.i]); };
+      const showNews = (items) => {
+        $("#snews").innerHTML = newsList(items);
+        $("#snews").onclick = (e) => { const x = e.target.closest("[data-i]"); if (x) newsModal(items[+x.dataset.i]); };
+      };
+      if (d.news.length) showNews(d.news); else $("#snews").innerHTML = '<div class="empty">Loading news…</div>';
+      api("stock_news", { ticker: t }).then((n) => { if ($("#snews")) showNews(n.items); }).catch(() => showNews(d.news));
       const idea = d.idea;
       $("#about").innerHTML = (idea ? `<div class="idea-card"><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><span class="tierlbl">${idea.tier}</span><span class="dir ${idea.direction.replace(" ", "")}">${idea.direction}</span><b>${esc(idea.structure)}</b>
           <span class="grow"></span><button class="btn small" data-go="#/trades?t=${t}">Full trade ›</button></div>

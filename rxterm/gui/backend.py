@@ -14,6 +14,7 @@ import threading
 import time
 import webbrowser
 from datetime import date, datetime
+from urllib.parse import quote_plus
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -97,6 +98,7 @@ class Backend:
         self.watch = self._load_watch()
         self.last_seen = time.time()
         self._full_running = False
+        self._tnews: dict[str, tuple[float, list]] = {}
 
     # ── lifecycle ──────────────────────────────────────────────────────
     def start(self) -> None:
@@ -330,6 +332,35 @@ class Backend:
             "catalyst": r.get("cat_event") or "", "summary": (prof.get("longBusinessSummary") or "")[:1200],
             "website": prof.get("website") or "", "idea": idea.to_dict() if idea else None,
         }
+
+    def stock_news(self, ticker: str) -> dict:
+        """The wire's stories for a stock, topped up from its own Yahoo feed (cached 10 min)."""
+        from ..data.news import YAHOO_TICKER_FEED
+
+        t = ticker.upper()
+        have = for_ticker(self.snap.news, t) if self.snap else []
+        extra: list = []
+        if not self.cfg.demo and len(have) < 12:
+            hit = self._tnews.get(t)
+            if hit and time.time() - hit[0] < 600:
+                extra = hit[1]
+            else:
+                try:
+                    wire = self.engine.wire
+                    extra = wire._fetch_feed("Yahoo Finance", YAHOO_TICKER_FEED.format(symbols=t), (t,))
+                    if not extra:  # Yahoo rate-limits now and then; Google News by company name instead
+                        q = quote_plus(f'"{universe.name_of(t)}" OR {t} stock')
+                        extra = wire._fetch_feed("Google News", f"https://news.google.com/rss/search?q={q}&hl=en-US&gl=US&ceid=US:en")
+                    extra = [i for i in extra if i.age_hours < 24 * 30]
+                except Exception as exc:
+                    log.debug("ticker news %s: %s", t, exc)
+                self._tnews[t] = (time.time(), extra)
+        seen, out = set(), []
+        for i in sorted(have + extra, key=lambda i: i.published, reverse=True):
+            if i.id not in seen:
+                seen.add(i.id)
+                out.append(i)
+        return {"ticker": t, "items": [self._news_item(i) for i in out[:30]]}
 
     def bars(self, ticker: str, tf: str = "6M") -> dict:
         t, code = ticker.upper(), tfs.resolve(tf) or "6M"
