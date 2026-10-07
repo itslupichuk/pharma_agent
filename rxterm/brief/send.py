@@ -97,7 +97,8 @@ def probe(cfg: Settings) -> list[str]:
     """Step through the SMTP handshake and report each server reply (never the credentials)."""
     user = (cfg.smtp_user or "").strip()
     password = _clean_secret(cfg.smtp_password)
-    out = [f"user: {user[:2]}…@{user.split('@')[-1] if '@' in user else '?'} ({len(user)} chars) · "
+    local, _, domain = user.partition("@")
+    out = [f"user: {local[:2]}…@{domain or '?'} ({len(user)} chars) · "
            f"password: {len(password)} chars, ascii={password.isascii()}, alnum={password.isalnum()}"]
     for port in (587, 465):
         try:
