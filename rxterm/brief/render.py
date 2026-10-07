@@ -202,10 +202,10 @@ def write_outputs(snap: Snapshot, out_dir: Path) -> dict[str, Path]:
         "subject": out_dir / "subject.txt",
     }
     html = render_html(snap)
-    paths["html"].write_text(html)
+    paths["html"].write_text(html, encoding="utf-8")
     paths["compact"] = out_dir / "brief_compact.html"
-    paths["compact"].write_text(compact_html(html))
-    paths["text"].write_text(render_text(snap))
-    paths["json"].write_text(json.dumps(export_json(snap), indent=2, default=str))
-    paths["subject"].write_text(subject_for(snap))
+    paths["compact"].write_text(compact_html(html), encoding="utf-8")
+    paths["text"].write_text(render_text(snap), encoding="utf-8")
+    paths["json"].write_text(json.dumps(export_json(snap), indent=2, default=str), encoding="utf-8")
+    paths["subject"].write_text(subject_for(snap), encoding="utf-8")
     return paths

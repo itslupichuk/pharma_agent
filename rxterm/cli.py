@@ -51,7 +51,7 @@ def cmd_brief(args) -> int:
         out.mkdir(parents=True, exist_ok=True)
         snap_file.write_bytes(pickle.dumps(snap))
     if args.theses:
-        thesis.apply_theses(snap, json.loads(Path(args.theses).read_text()))
+        thesis.apply_theses(snap, json.loads(Path(args.theses).read_text(encoding="utf-8")))
         snap.writer = args.writer or "Claude (desk analyst)"
     paths = render.write_outputs(snap, out)
     print(f"· brief written: {paths['html']}  ({len(snap.ideas)} ideas, theses by {snap.writer})", file=sys.stderr)
@@ -59,7 +59,7 @@ def cmd_brief(args) -> int:
         from .brief.send import EmailNotConfigured, EmailSendFailed, send_email
 
         try:
-            to = send_email(cfg, render.subject_for(snap), paths["html"].read_text(), paths["text"].read_text(), args.to)
+            to = send_email(cfg, render.subject_for(snap), paths["html"].read_text(encoding="utf-8"), paths["text"].read_text(encoding="utf-8"), args.to)
         except EmailNotConfigured as exc:
             print(f"· {exc}", file=sys.stderr)
             return 2
@@ -67,7 +67,7 @@ def cmd_brief(args) -> int:
             return 1
         print(f"· e-mailed to {to}", file=sys.stderr)
     if args.print:
-        print(paths["text"].read_text())
+        print(paths["text"].read_text(encoding="utf-8"))
     return 0
 
 

@@ -34,7 +34,7 @@ icon = ROOT / "assets" / "rxterm.ico"
 exe = EXE(
     pyz,
     a.scripts,
-    [],
+    [("X utf8_mode=1", None, "OPTION")],  # UTF-8 everywhere, regardless of the Windows code page
     exclude_binaries=True,
     name="RXTERM",
     console=True,

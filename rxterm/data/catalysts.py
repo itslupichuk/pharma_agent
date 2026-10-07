@@ -74,7 +74,7 @@ def load_yaml(path: Path) -> list[Catalyst]:
     if not path.exists():
         return []
     try:
-        rows = yaml.safe_load(path.read_text()) or []
+        rows = yaml.safe_load(path.read_text(encoding="utf-8")) or []
     except yaml.YAMLError as exc:
         log.warning("bad catalysts file %s: %s", path, exc)
         return []

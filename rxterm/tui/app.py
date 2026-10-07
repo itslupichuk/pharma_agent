@@ -763,12 +763,12 @@ class RxTerm(App):
     def _load_watch(self) -> list[str]:
         p = self.cfg.watchlist_path
         if p.exists():
-            return [x.strip().upper() for x in p.read_text().split() if x.strip().upper() in universe.UNIVERSE]
+            return [x.strip().upper() for x in p.read_text(encoding="utf-8").split() if x.strip().upper() in universe.UNIVERSE]
         return ["LLY", "NVO", "VRTX", "REGN", "MRNA", "VKTX", "MDGL", "SMMT"]
 
     def _save_watch(self) -> None:
         self.cfg.ensure_home()
-        self.cfg.watchlist_path.write_text("\n".join(self.watch) + "\n")
+        self.cfg.watchlist_path.write_text("\n".join(self.watch) + "\n", encoding="utf-8")
 
     def render_watch(self) -> None:
         b = self.snap.board
